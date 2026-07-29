@@ -209,7 +209,7 @@ git commit -m "build: initialize Ricky Twin frontend"
 - Produces: `siteContent: SiteContent`.
 - Produces: `getEnabledSectionIds(content: SiteContent): SiteSectionId[]`.
 
-- [ ] **Step 1: Write contract tests**
+- [x] **Step 1: Write contract tests**
 
 Test exact public labels:
 
@@ -232,7 +232,7 @@ expect(siteContent.projects.map(project => project.title)).toEqual([
 
 Also assert every enabled section has a unique ID, every career stage has six radar values, every project has four solution-path steps, and no public text contains `即科` or `源石云`.
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run:
 
@@ -242,7 +242,7 @@ pnpm test src/content/site-content.test.ts src/lib/section-navigation.test.ts
 
 Expected: FAIL because the contract and seed data do not exist.
 
-- [ ] **Step 3: Implement typed content**
+- [x] **Step 3: Implement typed content**
 
 Use discriminated IDs:
 
@@ -290,7 +290,7 @@ Populate the career narrative from:
 
 Translate the second public brand to `还呗` while retaining only the approved abstracted capability content. Use maturity values `1, 2, 3, 4` for 接触、形成、深化、体系化.
 
-- [ ] **Step 4: Implement section ordering**
+- [x] **Step 4: Implement section ordering**
 
 ```ts
 export function getEnabledSectionIds(content: SiteContent) {
@@ -301,7 +301,7 @@ export function getEnabledSectionIds(content: SiteContent) {
 }
 ```
 
-- [ ] **Step 5: Verify content contract**
+- [x] **Step 5: Verify content contract**
 
 Run:
 
@@ -311,7 +311,7 @@ pnpm test src/content/site-content.test.ts src/lib/section-navigation.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/content src/lib/section-navigation.ts src/lib/section-navigation.test.ts
