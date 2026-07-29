@@ -435,7 +435,7 @@ git commit -m "feat: add exact draft preview and publishing"
 **Interfaces:**
 - Produces: repeatable acceptance coverage for login, edit, exact preview, device switching, save, publish, and public isolation.
 
-- [ ] **Step 1: Add authenticated browser setup**
+- [x] **Step 1: Add authenticated browser setup**
 
 Start the test server with:
 
@@ -445,15 +445,15 @@ RICKY_ADMIN_SESSION_SECRET=test-session-secret
 RICKY_CONTENT_DATA_DIR=.ricky-twin-data/playwright
 ```
 
-- [ ] **Step 2: Write the end-to-end content workflow**
+- [x] **Step 2: Write the end-to-end content workflow**
 
 Log in, change the hero statement, assert the preview iframe updates before saving, switch to 390px preview, save the draft, verify the public page still shows the published statement, publish with a note, and verify the public page now shows the new statement. Restore the original snapshot at the end.
 
-- [ ] **Step 3: Verify preview boundaries**
+- [x] **Step 3: Verify preview boundaries**
 
 Assert “草稿预览” is visible, an external practice link cannot navigate the iframe, and the preview does not request any analytics or real chat endpoint.
 
-- [ ] **Step 4: Run the completion gate**
+- [x] **Step 4: Run the completion gate**
 
 Run:
 
@@ -469,7 +469,7 @@ git status --short
 
 Expected: all checks pass; only intentional source and plan files remain.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/e2e/admin-content.spec.ts playwright.config.ts docs/superpowers/plans/2026-07-30-content-admin.md
