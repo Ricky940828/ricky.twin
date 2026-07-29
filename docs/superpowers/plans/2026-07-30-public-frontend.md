@@ -437,7 +437,7 @@ git commit -m "feat: add global visual and pointer response system"
 - Produces: `<LanyardBadge onOpenIdentity={() => void 0} />`.
 - Produces: `<IdentityCardDialog open onClose />`.
 
-- [ ] **Step 1: Copy approved assets**
+- [x] **Step 1: Copy approved assets**
 
 Copy from:
 
@@ -447,7 +447,7 @@ Copy from:
 
 Verify twelve expected files and reject source MP4 previews.
 
-- [ ] **Step 2: Write media behavior tests**
+- [x] **Step 2: Write media behavior tests**
 
 Mock `IntersectionObserver` and `matchMedia`. Assert:
 
@@ -456,11 +456,11 @@ Mock `IntersectionObserver` and `matchMedia`. Assert:
 - active video is muted, looped, and `playsInline`;
 - Safari selects MOV and other browsers select WebM.
 
-- [ ] **Step 3: Write badge interaction tests**
+- [x] **Step 3: Write badge interaction tests**
 
 Assert pointer movement updates badge translation, pointer release returns it to rest, a movement below six pixels opens the identity dialog, and Escape closes the dialog.
 
-- [ ] **Step 4: Verify tests fail**
+- [x] **Step 4: Verify tests fail**
 
 Run:
 
@@ -470,15 +470,15 @@ pnpm test src/components/character
 
 Expected: FAIL because the character components are absent.
 
-- [ ] **Step 5: Implement media and badge components**
+- [x] **Step 5: Implement media and badge components**
 
 Use pointer capture for dragging. Clamp movement to the character safety area. Derive badge rotation from horizontal velocity and animate return with GSAP. Keep the badge as a DOM layer above the transparent character video.
 
-- [ ] **Step 6: Implement identity card**
+- [x] **Step 6: Implement identity card**
 
 Use an accessible native dialog. Front face shows name, location, and identity tags; back face shows public knowledge scope and current RAG status. Provide a visible flip control and close control.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Run:
 
@@ -490,7 +490,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add public/character src/hooks/use-intersection-active.ts src/components/character
