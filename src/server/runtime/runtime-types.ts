@@ -33,8 +33,52 @@ export interface RuntimeRun {
 
 export interface RuntimeWorkspace {
   runs: RuntimeRun[];
+  visits: RuntimeVisit[];
+  leads: RuntimeLead[];
   updatedAt: string;
   warnings?: string[];
+}
+
+export interface RuntimeVisit {
+  id: string;
+  visitorId: string;
+  path: string;
+  referer?: string;
+  userAgentGroup: string;
+  authenticated: boolean;
+  createdAt: string;
+}
+
+export type RuntimeLeadStatus = "new" | "contacted" | "closed";
+
+export interface RuntimeLead {
+  id: string;
+  visitorId: string;
+  name: string;
+  role: string;
+  contact: string;
+  direction: string;
+  consent: true;
+  status: RuntimeLeadStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordVisitInput {
+  visitorId: string;
+  path: string;
+  referer?: string;
+  userAgentGroup: string;
+  authenticated: boolean;
+}
+
+export interface CreateLeadInput {
+  visitorId: string;
+  name: string;
+  role: string;
+  contact: string;
+  direction: string;
+  consent: boolean;
 }
 
 export interface BeginRuntimeInput {

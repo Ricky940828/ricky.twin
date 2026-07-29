@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { DotField } from "@/components/background/dot-field";
+import { VisitTracker } from "@/components/analytics/visit-tracker";
 import { CareerSection } from "@/components/sections/career/career-section";
 import { HeroSection } from "@/components/sections/hero-section";
 import { LoungeSection } from "@/components/sections/lounge/lounge-section";
@@ -199,6 +200,7 @@ export function SectionRenderer({
       data-testid="site-renderer"
       onClickCapture={keepPreviewInSandbox}
     >
+      <VisitTracker enabled={mode === "published"} />
       <DotField />
       <SiteHeader
         activeSection={activeSection}

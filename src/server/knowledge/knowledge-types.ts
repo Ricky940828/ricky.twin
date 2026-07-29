@@ -20,6 +20,7 @@ export interface KnowledgeBase {
   description: string;
   defaultAccess: KnowledgeAccessLevel;
   ragEnabled: boolean;
+  loungeVisible?: boolean;
   indexStatus: KnowledgeIndexStatus;
   documentCount: number;
   chunkCount: number;
@@ -64,6 +65,7 @@ export interface CreateKnowledgeBaseInput {
   description: string;
   defaultAccess: KnowledgeAccessLevel;
   ragEnabled: boolean;
+  loungeVisible?: boolean;
 }
 
 export interface UpdateKnowledgeBaseInput {
@@ -71,6 +73,7 @@ export interface UpdateKnowledgeBaseInput {
   description?: string;
   defaultAccess?: KnowledgeAccessLevel;
   ragEnabled?: boolean;
+  loungeVisible?: boolean;
 }
 
 export interface IngestKnowledgeDocumentInput {

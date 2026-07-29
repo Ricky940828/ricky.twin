@@ -1,25 +1,9 @@
-import { randomUUID } from "node:crypto";
-
 import type { UnifiedChatMessage } from "@/server/agent/agent-types";
 import { getChatService } from "@/server/chat/chat-service";
-
-function cookieValue(request: Request, name: string) {
-  const cookie = request.headers.get("cookie") ?? "";
-  for (const part of cookie.split(";")) {
-    const [key, ...value] = part.trim().split("=");
-    if (key === name) {
-      return decodeURIComponent(value.join("="));
-    }
-  }
-  return undefined;
-}
-
-function safeVisitorId(request: Request) {
-  const existing = cookieValue(request, "ricky_visitor");
-  return existing && /^visitor-[a-z0-9-]{8,80}$/i.test(existing)
-    ? existing
-    : `visitor-${randomUUID()}`;
-}
+import {
+  attachVisitorCookie,
+  visitorIdForRequest,
+} from "@/server/runtime/visitor-session";
 
 function safeHistory(value: unknown): UnifiedChatMessage[] {
   if (!Array.isArray(value)) {
@@ -60,7 +44,7 @@ export async function POST(request: Request) {
     typeof body === "object" && body !== null
       ? (body as Record<string, unknown>)
       : {};
-  const visitorId = safeVisitorId(request);
+  const visitorId = visitorIdForRequest(request);
   const result = await getChatService().chat({
     question: typeof record.question === "string" ? record.question : "",
     history: safeHistory(record.history),
@@ -83,10 +67,5 @@ export async function POST(request: Request) {
     status,
     headers: { "Cache-Control": "no-store" },
   });
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  response.headers.append(
-    "Set-Cookie",
-    `ricky_visitor=${encodeURIComponent(visitorId)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`,
-  );
-  return response;
+  return attachVisitorCookie(response, request, visitorId);
 }

@@ -46,7 +46,15 @@ function dependencies() {
     begin: vi.fn<RuntimeStore["begin"]>(
       async () => ({ allowed: true, runId: "run-1" }) as const,
     ),
-    finish: vi.fn(async () => ({ runs: [], updatedAt: "" })),
+    finish: vi.fn(async () => ({
+      runs: [],
+      visits: [],
+      leads: [],
+      updatedAt: "",
+    })),
+    recordVisit: vi.fn(),
+    createLead: vi.fn(),
+    updateLeadStatus: vi.fn(),
     getWorkspace: vi.fn(),
   } satisfies RuntimeStore;
   const knowledgeService = {

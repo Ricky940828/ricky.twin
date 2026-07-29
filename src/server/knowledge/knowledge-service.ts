@@ -80,6 +80,7 @@ export function createKnowledgeService(
               : "",
           defaultAccess: value.defaultAccess as CreateKnowledgeBaseInput["defaultAccess"],
           ragEnabled: value.ragEnabled === true,
+          loungeVisible: value.loungeVisible !== false,
         });
         return {
           ok: true,
@@ -110,6 +111,9 @@ export function createKnowledgeService(
       }
       if (typeof value.ragEnabled === "boolean") {
         update.ragEnabled = value.ragEnabled;
+      }
+      if (typeof value.loungeVisible === "boolean") {
+        update.loungeVisible = value.loungeVisible;
       }
       try {
         return {

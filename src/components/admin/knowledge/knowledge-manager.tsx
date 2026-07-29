@@ -35,6 +35,7 @@ interface BaseDraft {
   description: string;
   defaultAccess: KnowledgeAccessLevel;
   ragEnabled: boolean;
+  loungeVisible: boolean;
 }
 
 const EMPTY_DRAFT: BaseDraft = {
@@ -42,6 +43,7 @@ const EMPTY_DRAFT: BaseDraft = {
   description: "",
   defaultAccess: "public",
   ragEnabled: true,
+  loungeVisible: true,
 };
 
 const ACCESS_LABELS: Record<KnowledgeAccessLevel, string> = {
@@ -56,6 +58,7 @@ function draftFromBase(base: KnowledgeBase): BaseDraft {
     description: base.description,
     defaultAccess: base.defaultAccess,
     ragEnabled: base.ragEnabled,
+    loungeVisible: base.loungeVisible !== false,
   };
 }
 
@@ -346,6 +349,17 @@ export function KnowledgeManager() {
                   label="参与 RAG"
                   onChange={(ragEnabled) =>
                     setDraft((value) => ({ ...value, ragEnabled }))
+                  }
+                />
+                <ToggleField
+                  checked={draft.loungeVisible}
+                  description="在前台展示语义名称与权限状态，不暴露真实路径"
+                  label="会客厅展示"
+                  onChange={(loungeVisible) =>
+                    setDraft((value) => ({
+                      ...value,
+                      loungeVisible,
+                    }))
                   }
                 />
               </div>

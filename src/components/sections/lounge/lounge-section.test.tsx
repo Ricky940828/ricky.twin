@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import {
   afterEach,
   beforeEach,
@@ -33,6 +38,74 @@ beforeEach(() => {
 });
 
 describe("LoungeSection", () => {
+  it("uses knowledge names and permission signals managed by the backend", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/api/knowledge-status")) {
+          return Response.json({
+            ok: true,
+            knowledge: [
+              {
+                id: "knowledge-1",
+                name: "后台配置知识库",
+                description: "由知识库模块统一维护",
+                access: "request",
+                accessLabel: "需申请",
+                ragEnabled: true,
+              },
+            ],
+          });
+        }
+        return Response.json({
+          ok: true,
+          mode: "demo",
+          answer: "透明演示",
+          nextAction: "none",
+          meta: { retrievalCount: 0, latencyMs: 1 },
+        });
+      }),
+    );
+
+    render(<LoungeSection content={siteContent.lounge} />);
+
+    expect(
+      await screen.findByText("后台配置知识库"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("由知识库模块统一维护")).toBeInTheDocument();
+    expect(screen.getByText("需申请")).toBeInTheDocument();
+  });
+
+  it("allows the backend to hide every managed knowledge badge", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/api/knowledge-status")) {
+          return Response.json({
+            ok: true,
+            configured: true,
+            knowledge: [],
+          });
+        }
+        return Response.json({
+          ok: true,
+          mode: "demo",
+          answer: "透明演示",
+          nextAction: "none",
+          meta: { retrievalCount: 0, latencyMs: 1 },
+        });
+      }),
+    );
+
+    render(<LoungeSection content={siteContent.lounge} />);
+
+    await waitFor(() => {
+      for (const knowledge of siteContent.lounge.knowledge) {
+        expect(screen.queryByText(knowledge.name)).not.toBeInTheDocument();
+      }
+    });
+  });
+
   it("shows exact quick questions and knowledge permission status once", () => {
     render(<LoungeSection content={siteContent.lounge} />);
 
@@ -64,7 +137,7 @@ describe("LoungeSection", () => {
     expect(screen.getByText("LIVE AGENT · RAG")).toBeInTheDocument();
   });
 
-  it("opens permission and contact prompts from explicit actions", () => {
+  it("opens permission and submits a real contact lead", async () => {
     render(<LoungeSection content={siteContent.lounge} />);
 
     fireEvent.click(
@@ -82,6 +155,21 @@ describe("LoungeSection", () => {
     );
     expect(
       screen.getByRole("dialog", { name: "留下联系方式" }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("怎么称呼"), {
+      target: { value: "合作访客" },
+    });
+    fireEvent.change(screen.getByLabelText("联系方式"), {
+      target: { value: "visitor@example.com" },
+    });
+    fireEvent.click(
+      screen.getByLabelText("同意仅将上述信息用于本次进一步沟通"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /提交沟通意向/ }),
+    );
+    expect(
+      await screen.findByText("沟通意向已提交"),
     ).toBeInTheDocument();
   });
 

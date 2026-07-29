@@ -165,4 +165,55 @@ describe("FileRuntimeStore", () => {
     expect(raw).not.toContain("apiKey");
     expect(raw).not.toContain("answer");
   });
+
+  it("记录页面访问和加密留资，并支持更新跟进状态", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "ricky-runtime-"));
+    temporaryDirectories.push(dataDir);
+    let sequence = 0;
+    const store = createFileRuntimeStore({
+      dataDir,
+      now: () => new Date("2026-07-30T08:00:00.000Z"),
+      id: () => `record-${++sequence}`,
+      secret: "test-runtime-secret",
+    });
+
+    await store.recordVisit({
+      visitorId: "visitor-1",
+      path: "/",
+      referer: "https://example.com",
+      userAgentGroup: "Chrome / macOS",
+      authenticated: false,
+    });
+    await store.recordVisit({
+      visitorId: "visitor-1",
+      path: "/",
+      userAgentGroup: "Chrome / macOS",
+      authenticated: false,
+    });
+    const created = await store.createLead({
+      visitorId: "visitor-1",
+      name: "合作访客",
+      role: "某金融机构 / 产品负责人",
+      contact: "visitor@example.com",
+      direction: "希望沟通 AI 知识库合作",
+      consent: true,
+    });
+
+    expect(created.leads[0]).toMatchObject({
+      name: "合作访客",
+      contact: "visitor@example.com",
+      status: "new",
+    });
+    const leadId = created.leads[0].id;
+    const updated = await store.updateLeadStatus(leadId, "contacted");
+    expect(updated.leads[0].status).toBe("contacted");
+    expect(updated.visits).toHaveLength(2);
+
+    const raw = await readFile(
+      join(dataDir, "runtime", "workspace.json"),
+      "utf8",
+    );
+    expect(raw).not.toContain("visitor@example.com");
+    expect(raw).toContain("contactCiphertext");
+  });
 });

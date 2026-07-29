@@ -19,6 +19,7 @@ import { LivePreview } from "@/components/admin/live-preview";
 import { KnowledgeManager } from "@/components/admin/knowledge/knowledge-manager";
 import { AgentManager } from "@/components/admin/agent/agent-manager";
 import { ModelManager } from "@/components/admin/models/model-manager";
+import { ActivityManager } from "@/components/admin/activity/activity-manager";
 
 type SessionState = "checking" | "unauthenticated" | "authenticated";
 
@@ -230,11 +231,7 @@ export function AdminWorkspace() {
       ) : activeModule === "models" ? (
         <ModelManager />
       ) : (
-        <section className="admin-coming-module">
-          <span className="admin-kicker">NEXT MODULE</span>
-          <h2>访客与运行记录</h2>
-          <p>该模块正在按轻量、可维护的边界接入。</p>
-        </section>
+        <ActivityManager />
       )}
     </AdminShell>
   );

@@ -38,7 +38,7 @@ const MODULE_META: Record<
   knowledge: { eyebrow: "KNOWLEDGE RAG", label: "知识库" },
   agent: { eyebrow: "AGENT PROTOCOL", label: "Agent 管理" },
   models: { eyebrow: "MODEL CONNECTIONS", label: "模型连接" },
-  activity: { eyebrow: "VISIT & RUN LOGS", label: "运行记录" },
+  activity: { eyebrow: "VISIT & RUN LOGS", label: "访客与运行" },
 };
 
 const MODULE_ITEMS: Array<{

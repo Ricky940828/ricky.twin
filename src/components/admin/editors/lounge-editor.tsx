@@ -107,8 +107,8 @@ export function LoungeEditor({
 
       {knowledge ? (
         <EditorPanel
-          description="这里显示语义名称和权限迹象，不暴露真实文件路径。"
-          title="前台知识库标识"
+          description="仅在“知识库”模块尚未创建任何会客厅展示项时使用；正式知识库名称、权限和 RAG 状态以“知识库”模块为准。"
+          title="知识库标识占位内容"
         >
           <label className="admin-field">
             <span>
@@ -171,8 +171,8 @@ export function LoungeEditor({
           </div>
           <ToggleField
             checked={knowledge.ragEnabled}
-            description="这里只控制前台标识；真实检索仍由知识库权限服务执行。"
-            label="参与 RAG"
+            description="仅用于无后台知识库时的占位展示，不控制真实检索。"
+            label="占位状态显示可用"
             onChange={(ragEnabled) => updateKnowledge({ ragEnabled })}
           />
         </EditorPanel>

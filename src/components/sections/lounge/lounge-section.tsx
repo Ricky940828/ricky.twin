@@ -160,6 +160,41 @@ function PermissionDialog({ onClose }: { onClose: () => void }) {
 
 function LeadDialog({ onClose }: { onClose: () => void }) {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submitLead = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    const formData = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.get("name"),
+          role: formData.get("role"),
+          contact: formData.get("contact"),
+          direction: formData.get("direction"),
+          consent: formData.get("privacy") === "on",
+        }),
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+      };
+      if (!result.ok) {
+        setError(result.message ?? "提交失败，请稍后再试");
+        return;
+      }
+      setSubmitted(true);
+    } catch {
+      setError("沟通意向暂时无法提交，请稍后再试");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="lounge-modal-overlay" role="presentation">
@@ -177,19 +212,14 @@ function LeadDialog({ onClose }: { onClose: () => void }) {
         {submitted ? (
           <div className="lounge-modal__success">
             <Check aria-hidden size={24} />
-            <strong>原型流程已完成</strong>
-            <p>正式接入后，这条沟通线索会进入后台的线索管理。</p>
+            <strong>沟通意向已提交</strong>
+            <p>这条信息已经进入 Ricky 会客厅后台，Ricky 会在方便时与你联系。</p>
             <button className="button-secondary" onClick={onClose} type="button">
               返回会客厅
             </button>
           </div>
         ) : (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSubmitted(true);
-            }}
-          >
+          <form onSubmit={submitLead}>
             <div className="lounge-modal__row">
               <label>
                 怎么称呼
@@ -219,8 +249,17 @@ function LeadDialog({ onClose }: { onClose: () => void }) {
               <input name="privacy" required type="checkbox" />
               同意仅将上述信息用于本次进一步沟通
             </label>
-            <button className="button-primary" type="submit">
-              提交沟通意向
+            {error ? (
+              <p className="lounge-modal__error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button
+              className="button-primary"
+              disabled={submitting}
+              type="submit"
+            >
+              {submitting ? "正在提交…" : "提交沟通意向"}
               <ArrowRight aria-hidden size={16} />
             </button>
           </form>
@@ -235,10 +274,43 @@ export function LoungeSection({ content }: LoungeSectionProps) {
   const [input, setInput] = useState("");
   const [permissionOpen, setPermissionOpen] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
+  const [managedKnowledge, setManagedKnowledge] = useState<
+    KnowledgeBadge[] | null
+  >(null);
   const reducedMotion = usePrefersReducedMotion();
   const { ref, active } = useIntersectionActive<HTMLElement>({
     threshold: 0.12,
   });
+
+  useEffect(() => {
+    let active = true;
+    const loadKnowledgeStatus = async () => {
+      try {
+        const response = await fetch("/api/knowledge-status", {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as {
+          ok?: boolean;
+          configured?: boolean;
+          knowledge?: KnowledgeBadge[];
+        };
+        if (
+          active &&
+          result.ok &&
+          Array.isArray(result.knowledge) &&
+          (result.configured || result.knowledge.length > 0)
+        ) {
+          setManagedKnowledge(result.knowledge);
+        }
+      } catch {
+        // Published content remains a safe visual fallback.
+      }
+    };
+    void loadKnowledgeStatus();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (state.status !== "thinking" || !state.pendingQuestion) {
@@ -357,7 +429,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
       </div>
 
       <div className="knowledge-status-grid">
-        {content.knowledge.map((knowledge) => (
+        {(managedKnowledge ?? content.knowledge).map((knowledge) => (
           <KnowledgeStatus
             key={knowledge.id}
             knowledge={knowledge}

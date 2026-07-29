@@ -58,6 +58,7 @@ function normalizeBaseInput(input: CreateKnowledgeBaseInput) {
     description: requireText(input.description, "知识库说明"),
     defaultAccess: input.defaultAccess,
     ragEnabled: Boolean(input.ragEnabled),
+    loungeVisible: input.loungeVisible !== false,
   };
 }
 
@@ -158,6 +159,10 @@ export function createFileKnowledgeStore(
         JSON.parse(await readFile(workspacePath, "utf8")) as unknown,
       );
       if (parsed) {
+        parsed.bases = parsed.bases.map((base) => ({
+          ...base,
+          loungeVisible: base.loungeVisible !== false,
+        }));
         return parsed;
       }
     } catch (error) {
@@ -229,6 +234,8 @@ export function createFileKnowledgeStore(
           description: input.description ?? current.description,
           defaultAccess: input.defaultAccess ?? current.defaultAccess,
           ragEnabled: input.ragEnabled ?? current.ragEnabled,
+          loungeVisible:
+            input.loungeVisible ?? current.loungeVisible ?? true,
         };
         const normalized = normalizeBaseInput(updatedInput);
         const timestamp = now().toISOString();

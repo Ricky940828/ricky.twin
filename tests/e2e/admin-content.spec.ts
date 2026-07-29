@@ -6,7 +6,7 @@ test("后台编辑、同源预览、保存与发布形成完整闭环", async ({
 }) => {
   const previewSideEffects: string[] = [];
   page.on("request", (request) => {
-    if (/\/api\/(analytics|visits|chat|leads)/.test(request.url())) {
+    if (/\/api\/(analytics|visits?|chat|leads)/.test(request.url())) {
       previewSideEffects.push(request.url());
     }
   });
