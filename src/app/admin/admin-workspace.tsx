@@ -8,6 +8,7 @@ import type { ContentWorkspace } from "@/server/content/content-workspace";
 import { AdminLogin } from "@/components/admin/admin-login";
 import {
   AdminShell,
+  type AdminModuleId,
   type SaveState,
 } from "@/components/admin/admin-shell";
 import {
@@ -15,6 +16,7 @@ import {
   type AdminEditorId,
 } from "@/components/admin/content-editor";
 import { LivePreview } from "@/components/admin/live-preview";
+import { KnowledgeManager } from "@/components/admin/knowledge/knowledge-manager";
 
 type SessionState = "checking" | "unauthenticated" | "authenticated";
 
@@ -34,6 +36,8 @@ export function AdminWorkspace() {
   const [draft, setDraft] = useState<SiteContent | null>(null);
   const [activeEditor, setActiveEditor] =
     useState<AdminEditorId>("overview");
+  const [activeModule, setActiveModule] =
+    useState<AdminModuleId>("content");
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [error, setError] = useState("");
 
@@ -189,31 +193,49 @@ export function AdminWorkspace() {
   return (
     <AdminShell
       activeEditor={activeEditor}
+      activeModule={activeModule}
       onEditorChange={setActiveEditor}
       onLogout={() => void logout()}
+      onModuleChange={setActiveModule}
       onSave={() => void saveDraft()}
       saveState={saveState}
       versionLabel={`正式版本 ${workspace.publishedVersion.id}`}
     >
-      <div className="admin-content-layout">
-        <div className="admin-content-layout__editor">
-          {error ? (
-            <div className="admin-form-error" role="alert">
-              {error}
-            </div>
-          ) : null}
-          <ContentEditor
-            activeEditor={activeEditor}
+      {activeModule === "content" ? (
+        <div className="admin-content-layout">
+          <div className="admin-content-layout__editor">
+            {error ? (
+              <div className="admin-form-error" role="alert">
+                {error}
+              </div>
+            ) : null}
+            <ContentEditor
+              activeEditor={activeEditor}
+              content={draft}
+              onChange={updateDraft}
+            />
+          </div>
+          <LivePreview
+            canPublish={saveState === "saved"}
             content={draft}
-            onChange={updateDraft}
+            onPublish={publishDraft}
           />
         </div>
-        <LivePreview
-          canPublish={saveState === "saved"}
-          content={draft}
-          onPublish={publishDraft}
-        />
-      </div>
+      ) : activeModule === "knowledge" ? (
+        <KnowledgeManager />
+      ) : (
+        <section className="admin-coming-module">
+          <span className="admin-kicker">NEXT MODULE</span>
+          <h2>
+            {activeModule === "agent"
+              ? "Agent 行为协议"
+              : activeModule === "models"
+                ? "模型连接"
+                : "访客与运行记录"}
+          </h2>
+          <p>该模块正在按轻量、可维护的边界接入。</p>
+        </section>
+      )}
     </AdminShell>
   );
 }

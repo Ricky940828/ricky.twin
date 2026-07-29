@@ -3672,11 +3672,25 @@ a {
   padding-top: 24px;
 }
 
-.admin-rail__later p {
-  margin: 0;
+.admin-rail__later button {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   padding: 0 10px;
-  color: rgb(245 242 250 / 0.26);
-  font-size: 0.68rem;
+  background: transparent;
+  color: rgb(245 242 250 / 0.34);
+  font-size: 0.67rem;
+  cursor: pointer;
+}
+
+.admin-rail__later button:hover,
+.admin-rail__later button.is-active {
+  border-color: rgb(192 132 252 / 0.14);
+  background: rgb(168 85 247 / 0.07);
+  color: rgb(245 242 250 / 0.76);
 }
 
 .admin-rail__logout {
@@ -3773,6 +3787,21 @@ a {
   animation: admin-pulse 700ms ease-in-out infinite alternate;
 }
 
+.admin-module-boundary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgb(245 242 250 / 0.36);
+  font-size: 0.58rem;
+}
+
+.admin-module-boundary i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint);
+}
+
 .admin-button {
   display: inline-flex;
   min-height: 42px;
@@ -3818,6 +3847,243 @@ a {
 
 .admin-content-layout__editor {
   min-width: 0;
+}
+
+.admin-knowledge-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.admin-knowledge-list {
+  position: sticky;
+  top: 96px;
+  overflow: hidden;
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  background: linear-gradient(
+    145deg,
+    rgb(30 23 39 / 0.88),
+    rgb(16 13 21 / 0.96)
+  );
+}
+
+.admin-knowledge-list > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgb(192 132 252 / 0.1);
+  padding: 18px;
+}
+
+.admin-knowledge-list > header > div {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-knowledge-list h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.admin-knowledge-list > header > button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  background: rgb(168 85 247 / 0.08);
+  color: var(--purple-bright);
+  cursor: pointer;
+}
+
+.admin-knowledge-list__items {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+}
+
+.admin-knowledge-list__items > button {
+  display: grid;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 13px 12px;
+  background: transparent;
+  color: rgb(245 242 250 / 0.54);
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-knowledge-list__items > button:hover,
+.admin-knowledge-list__items > button.is-active {
+  border-color: rgb(192 132 252 / 0.17);
+  background: rgb(168 85 247 / 0.08);
+  color: white;
+}
+
+.admin-knowledge-list__items > button > span:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-knowledge-list__items strong {
+  font-size: 0.7rem;
+}
+
+.admin-knowledge-list__items small,
+.admin-knowledge-list__items > button > span:last-child {
+  color: rgb(245 242 250 / 0.3);
+  font-size: 0.55rem;
+  line-height: 1.5;
+}
+
+.admin-knowledge-list__items [data-status="ready"] {
+  color: rgb(119 227 191 / 0.58);
+}
+
+.admin-knowledge-empty,
+.admin-documents-empty {
+  display: grid;
+  justify-items: start;
+  gap: 9px;
+  padding: 28px 20px;
+  color: rgb(245 242 250 / 0.38);
+}
+
+.admin-knowledge-empty strong {
+  color: rgb(245 242 250 / 0.66);
+  font-size: 0.72rem;
+}
+
+.admin-knowledge-empty p,
+.admin-documents-empty p {
+  margin: 0;
+  color: rgb(245 242 250 / 0.3);
+  font-size: 0.62rem;
+  line-height: 1.65;
+}
+
+.admin-upload-button,
+.admin-document-update {
+  position: relative;
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  overflow: hidden;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: rgb(168 85 247 / 0.08);
+  color: rgb(245 242 250 / 0.7);
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+.admin-upload-button input,
+.admin-document-update input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.admin-document-list {
+  display: grid;
+  gap: 9px;
+}
+
+.admin-document-list article {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgb(192 132 252 / 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgb(255 255 255 / 0.018);
+}
+
+.admin-document-list__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgb(119 227 191 / 0.07);
+  color: var(--mint);
+}
+
+.admin-document-list article > div {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-document-list strong {
+  color: rgb(245 242 250 / 0.68);
+  font-size: 0.68rem;
+}
+
+.admin-document-list small {
+  color: rgb(245 242 250 / 0.3);
+  font-size: 0.56rem;
+}
+
+.admin-document-update {
+  min-height: 32px;
+  background: transparent;
+  color: rgb(216 180 254 / 0.62);
+}
+
+.admin-module-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgb(119 227 191 / 0.16);
+  border-radius: 10px;
+  padding: 11px 13px;
+  background: rgb(6 78 59 / 0.09);
+  color: rgb(167 243 208 / 0.74);
+  font-size: 0.64rem;
+}
+
+.admin-module-loading,
+.admin-coming-module {
+  display: grid;
+  min-height: 420px;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.015);
+  color: rgb(245 242 250 / 0.42);
+  text-align: center;
+}
+
+.admin-module-loading > span {
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgb(192 132 252 / 0.14);
+  border-top-color: var(--purple-bright);
+  border-radius: 50%;
+  animation: admin-spin 800ms linear infinite;
+}
+
+.admin-coming-module h2 {
+  margin: 4px 0 0;
+  font-size: 1.6rem;
+}
+
+.admin-coming-module p {
+  margin: 0;
+  color: rgb(245 242 250 / 0.32);
+  font-size: 0.68rem;
 }
 
 .admin-editor-stack {
@@ -4463,6 +4729,10 @@ a {
     max-height: none;
     order: -1;
   }
+
+  .admin-knowledge-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
@@ -4507,6 +4777,15 @@ a {
 
   .admin-preview-devices button {
     flex: 1;
+  }
+
+  .admin-knowledge-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-knowledge-list {
+    position: relative;
+    top: auto;
   }
 
   .admin-editor-panel > header,
