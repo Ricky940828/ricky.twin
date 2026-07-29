@@ -178,11 +178,11 @@ git commit -m "feat: persist content drafts and published versions"
 - Consumes: `RICKY_ADMIN_PASSWORD` and `RICKY_ADMIN_SESSION_SECRET`.
 - Produces: `createAdminSessionCookie()`, `verifyAdminRequest(request)`, and three session endpoints.
 
-- [ ] **Step 1: Write failing authentication tests**
+- [x] **Step 1: Write failing authentication tests**
 
 Assert correct and incorrect password handling, signature tamper rejection, expiry rejection, and `HttpOnly`, `SameSite=Lax`, `Path=/`, and production-only `Secure` cookie attributes.
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run:
 
@@ -192,15 +192,15 @@ pnpm test src/server/admin/admin-auth.test.ts
 
 Expected: FAIL because authentication helpers do not exist.
 
-- [ ] **Step 3: Implement signed sessions**
+- [x] **Step 3: Implement signed sessions**
 
 Use Node `crypto.createHmac("sha256", secret)` and `timingSafeEqual`. The cookie payload contains only an issued-at and expiry timestamp. In local development only, expose `ricky-local` as the documented fallback password and a development signing secret; production must refuse to create a session when either environment variable is missing.
 
-- [ ] **Step 4: Implement session routes**
+- [x] **Step 4: Implement session routes**
 
 `POST /api/admin/session` accepts `{ password }`; status returns `{ authenticated }`; logout clears the cookie. Return generic `401` messages without revealing which credential failed.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
