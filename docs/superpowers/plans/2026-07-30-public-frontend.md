@@ -655,15 +655,15 @@ git commit -m "feat: add guided career route and capability radar"
 - Produces: `<CardSwap projects activeIndex onChange onOpen />`.
 - Produces: `<ProjectsSection projects />`.
 
-- [ ] **Step 1: Write reducer tests**
+- [x] **Step 1: Write reducer tests**
 
 Test next, previous, direct selection, wraparound prevention, and dynamic project counts from one through eight.
 
-- [ ] **Step 2: Write project-section tests**
+- [x] **Step 2: Write project-section tests**
 
 Assert four initial titles, the four-step path labels, `01 / 04`, click-driven card change, and detail-dialog opening.
 
-- [ ] **Step 3: Verify failure**
+- [x] **Step 3: Verify failure**
 
 Run:
 
@@ -673,7 +673,7 @@ pnpm test src/components/sections/projects
 
 Expected: FAIL because project components do not exist.
 
-- [ ] **Step 4: Implement Card Swap**
+- [x] **Step 4: Implement Card Swap**
 
 Render at most four visible layers. Use a GSAP timeline:
 
@@ -684,11 +684,11 @@ Render at most four visible layers. Use a GSAP timeline:
 
 Respond to click, keyboard arrows, and bounded wheel intent. Do not use an interval.
 
-- [ ] **Step 5: Implement detail dialog and project character**
+- [x] **Step 5: Implement detail dialog and project character**
 
 Wrap the current card with `TargetLock`. Add the project-guide character outside the card stack. The dialog displays definition, judgment, application, representative cases, and abstracted outcomes without exposing evidence paths.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run:
 
@@ -700,7 +700,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/sections/projects
