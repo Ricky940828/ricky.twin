@@ -1,7 +1,6 @@
+import { SectionRenderer } from "@/components/layout/section-renderer";
+import { siteContent } from "@/content/site-content";
+
 export default function HomePage() {
-  return (
-    <main>
-      <span className="sr-only">Ricky 会客厅</span>
-    </main>
-  );
+  return <SectionRenderer site={siteContent} />;
 }

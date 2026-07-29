@@ -32,3 +32,8 @@ Object.defineProperty(HTMLMediaElement.prototype, "pause", {
   configurable: true,
   value: () => undefined,
 });
+
+Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+  configurable: true,
+  value: () => null,
+});

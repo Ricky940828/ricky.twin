@@ -35,7 +35,8 @@ export function SiteHeader({
         onClick={() => onNavigate("hero")}
         type="button"
       >
-        {brand.wordmark}
+        <span>{brand.wordmark}</span>
+        <small>{brand.name}</small>
       </button>
 
       <nav aria-label="主导航" className="site-header__nav">

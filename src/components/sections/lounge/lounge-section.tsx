@@ -85,7 +85,11 @@ function ChatMessage({
     <article
       className="lounge-message"
       data-role={message.role}
-      data-testid={`lounge-message-${message.role}`}
+      data-testid={
+        message.role === "assistant" && message.id !== "welcome"
+          ? "lounge-answer"
+          : `lounge-message-${message.role}`
+      }
     >
       <span className="lounge-message__avatar">
         {message.role === "assistant" ? "R" : <UserRound aria-hidden size={14} />}
@@ -258,6 +262,12 @@ export function LoungeSection({ content }: LoungeSectionProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [leadOpen, permissionOpen]);
+
+  useEffect(() => {
+    const openContact = () => setLeadOpen(true);
+    window.addEventListener("ricky:open-contact", openContact);
+    return () => window.removeEventListener("ricky:open-contact", openContact);
+  }, []);
 
   const submitQuestion = (question: string) => {
     if (!question.trim() || state.status === "thinking") {

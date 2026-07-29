@@ -850,7 +850,7 @@ git commit -m "feat: add simulated AI reception lounge"
 - Consumes: any complete `SiteContent` snapshot and section component map.
 - Produces: complete one-page public route.
 
-- [ ] **Step 1: Write section-renderer tests**
+- [x] **Step 1: Write section-renderer tests**
 
 Given an ordered configuration with one disabled section, assert:
 
@@ -860,7 +860,7 @@ Given an ordered configuration with one disabled section, assert:
 - replacing the supplied content snapshot immediately changes rendered copy without rebuilding the component map;
 - unknown section IDs fail at compile time through `satisfies Record<SiteSectionId, ...>`.
 
-- [ ] **Step 2: Verify failure**
+- [x] **Step 2: Verify failure**
 
 Run:
 
@@ -870,7 +870,7 @@ pnpm test src/components/layout/section-renderer.test.tsx src/app/page.test.tsx
 
 Expected: FAIL because the public sections are not integrated.
 
-- [ ] **Step 3: Implement the renderer**
+- [x] **Step 3: Implement the renderer**
 
 Use an exhaustive map of adapters that all accept the same `site` prop:
 
@@ -898,11 +898,11 @@ const sectionComponents = {
 
 Mount one global `DotField`, sticky `SiteHeader`, ordered sections, and `SiteFooter`. `SectionRenderer` must receive `site: SiteContent` through props and must not import the singleton seed data internally. This lets the public page pass the published snapshot and the future admin preview pass its current draft through the exact same renderer.
 
-- [ ] **Step 4: Implement transitions**
+- [x] **Step 4: Implement transitions**
 
 The hero lounge CTA runs one short character-glitch overlay, then scrolls to the lounge. It must not replay during ordinary scrolling. Section transitions update the header and preload the next character clip.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -915,7 +915,7 @@ pnpm build
 
 Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/layout src/app
