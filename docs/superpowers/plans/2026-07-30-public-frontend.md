@@ -337,7 +337,7 @@ git commit -m "feat: add typed public content contract"
 - Produces: `<DotField density="normal" | "subtle" />`.
 - Produces: `<TargetLock as="div" active?: boolean>`.
 
-- [ ] **Step 1: Write Dot Field math tests**
+- [x] **Step 1: Write Dot Field math tests**
 
 ```ts
 expect(computeDotOffset({x: 0, y: 0}, {x: 1000, y: 1000, speed: 0}, options))
@@ -347,11 +347,11 @@ expect(computeDotOffset({x: 10, y: 10}, {x: 10, y: 10, speed: 1}, options).inten
   .toBeGreaterThan(0);
 ```
 
-- [ ] **Step 2: Write target-lock accessibility test**
+- [x] **Step 2: Write target-lock accessibility test**
 
 Render a keyboard-focusable child and assert the wrapper keeps the native cursor and exposes four decorative corners with `aria-hidden="true"`.
 
-- [ ] **Step 3: Verify tests fail**
+- [x] **Step 3: Verify tests fail**
 
 Run:
 
@@ -361,7 +361,7 @@ pnpm test src/components/background/dot-field-math.test.ts src/components/motion
 
 Expected: FAIL because both components are absent.
 
-- [ ] **Step 4: Implement visual tokens**
+- [x] **Step 4: Implement visual tokens**
 
 Define CSS variables:
 
@@ -381,15 +381,15 @@ Define CSS variables:
 
 Add glass panels, section spacing, focus rings, `sr-only`, and reduced-motion rules.
 
-- [ ] **Step 5: Implement Dot Field**
+- [x] **Step 5: Implement Dot Field**
 
 Use one fixed `pointer-events: none` canvas. Draw a deterministic grid, displace dots with a quadratic distance curve, scale force by pointer speed, and ease each dot back to origin. In reduced-motion mode, draw one static frame.
 
-- [ ] **Step 6: Implement local target-lock**
+- [x] **Step 6: Implement local target-lock**
 
 Render four absolutely positioned corner spans. Activate on `:hover`, `:focus-within`, or explicit `active`; preserve the system cursor.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Run:
 
@@ -401,7 +401,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/app/globals.css src/lib/cn.ts src/hooks src/components/background src/components/motion/target-lock*
