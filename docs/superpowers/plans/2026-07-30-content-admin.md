@@ -309,11 +309,11 @@ git commit -m "feat: connect public content publishing workflow"
 - Consumes: `ContentWorkspace` from `/api/admin/content`.
 - Produces: an authenticated editor that emits a complete `SiteContent` draft on every field change and saves explicitly.
 
-- [ ] **Step 1: Write failing admin interaction tests**
+- [x] **Step 1: Write failing admin interaction tests**
 
 Mock the session and content APIs. Assert unauthenticated users see the admin login, authenticated users see version/draft status, hero copy edits update local draft state, a section can be enabled/disabled, career/project/practice array items can be selected and edited, and save sends a complete `SiteContent`.
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run:
 
@@ -323,19 +323,19 @@ pnpm test src/components/admin/admin-workspace.test.tsx
 
 Expected: FAIL because the admin UI does not exist.
 
-- [ ] **Step 3: Implement admin shell and editor navigation**
+- [x] **Step 3: Implement admin shell and editor navigation**
 
 Use a compact left rail with “内容概览、职业路线、项目主题、实践入口、AI 会客厅”. Keep persistent save/publish status in the top bar. Forms use explicit labels, character-count guidance, and inline validation messages.
 
-- [ ] **Step 4: Implement typed immutable draft updates**
+- [x] **Step 4: Implement typed immutable draft updates**
 
 Provide small update helpers for object fields and array items. Do not mutate nested arrays in place. Keep all five section configs present; “关闭” changes only `enabled`.
 
-- [ ] **Step 5: Implement save state**
+- [x] **Step 5: Implement save state**
 
 Show “未保存、保存中、已保存、保存失败” states. Save only on an explicit button; editing never auto-publishes.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 
