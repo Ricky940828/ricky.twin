@@ -139,6 +139,7 @@ a {
   font-weight: 530;
   letter-spacing: -0.055em;
   line-height: 0.98;
+  text-wrap: balance;
 }
 
 .section-copy {
@@ -1360,6 +1361,7 @@ a {
 
 .projects-section {
   width: min(100% - 32px, 1540px);
+  overflow-x: clip;
 }
 
 .projects-section::before {
@@ -2831,6 +2833,7 @@ a {
   font-weight: 500;
   letter-spacing: -0.052em;
   line-height: 0.94;
+  text-wrap: balance;
 }
 
 .site-footer__main p {
@@ -3258,11 +3261,27 @@ a {
   }
 
   .practice-dock {
+    overflow: hidden;
     margin-top: -18px;
   }
 
   .practice-dock__items {
-    grid-template-columns: 1fr;
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 3px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .practice-dock__items::-webkit-scrollbar {
+    display: none;
+  }
+
+  .practice-dock__target {
+    min-width: min(78vw, 286px);
+    flex: 0 0 min(78vw, 286px);
+    scroll-snap-align: start;
   }
 
   .hero-scroll-hint {

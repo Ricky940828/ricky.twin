@@ -935,7 +935,7 @@ git commit -m "feat: integrate Ricky Twin public experience"
 **Interfaces:**
 - Produces: repeatable browser acceptance for desktop, mobile, and reduced motion.
 
-- [ ] **Step 1: Write desktop acceptance test**
+- [x] **Step 1: Write desktop acceptance test**
 
 Cover:
 
@@ -950,15 +950,15 @@ await page.getByRole("button", { name: "你如何判断一个机构合作是否�
 await expect(page.getByTestId("lounge-answer")).toBeVisible();
 ```
 
-- [ ] **Step 2: Write reduced-motion test**
+- [x] **Step 2: Write reduced-motion test**
 
 Emulate reduced motion, assert character posters are visible, videos do not autoplay, and all navigation/actions remain available.
 
-- [ ] **Step 3: Write mobile test**
+- [x] **Step 3: Write mobile test**
 
 Use a 390 × 844 viewport. Assert vertical career order, readable project cards, horizontal practice dock, and unobstructed lounge input.
 
-- [ ] **Step 4: Run tests and fix product defects**
+- [x] **Step 4: Run tests and fix product defects**
 
 Run:
 
@@ -969,7 +969,7 @@ pnpm test:e2e
 
 Expected: all tests pass without timing retries.
 
-- [ ] **Step 5: Perform local visual inspection**
+- [x] **Step 5: Perform local visual inspection**
 
 Run:
 
@@ -989,7 +989,7 @@ Inspect desktop and mobile in the browser. Confirm:
 - native cursor remains visible;
 - focus states and reduced-motion fallbacks are clear.
 
-- [ ] **Step 6: Run the completion gate**
+- [x] **Step 6: Run the completion gate**
 
 Run:
 
@@ -1005,7 +1005,7 @@ git status --short
 
 Expected: tests, lint, type check, and build pass; only intentional files remain.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests playwright.config.ts
