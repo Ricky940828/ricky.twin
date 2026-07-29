@@ -773,11 +773,11 @@ git commit -m "feat: add live practice showcase"
 - Produces: `getSimulatedReply(questionId): LoungeReply`.
 - Produces: `<LoungeSection content knowledgeBadges />`.
 
-- [ ] **Step 1: Write Magic Rings tests**
+- [x] **Step 1: Write Magic Rings tests**
 
 Assert four or five rings render, mouse-follow handlers are absent, pulse state changes only after the first submitted question, and reduced-motion mode uses static rings.
 
-- [ ] **Step 2: Write lounge behavior tests**
+- [x] **Step 2: Write lounge behavior tests**
 
 Assert:
 
@@ -788,7 +788,7 @@ Assert:
 - contact action opens the lead form;
 - first question increments the ring pulse key once.
 
-- [ ] **Step 3: Verify failure**
+- [x] **Step 3: Verify failure**
 
 Run:
 
@@ -798,11 +798,11 @@ pnpm test src/components/motion/magic-rings.test.tsx src/components/sections/lou
 
 Expected: FAIL because lounge components are absent.
 
-- [ ] **Step 4: Implement Magic Rings**
+- [x] **Step 4: Implement Magic Rings**
 
 Use SVG arcs with four to five staggered rings. Animate a slow scale/rotation cycle and one explicit pulse timeline. Keep opacity below the character and chat hierarchy. Render a static low-opacity ring field for reduced motion.
 
-- [ ] **Step 5: Implement simulated lounge**
+- [x] **Step 5: Implement simulated lounge**
 
 Use a small state machine with `idle`, `thinking`, and `answered`. Simulated replies must follow:
 
@@ -816,7 +816,7 @@ interface LoungeReply {
 
 Do not call external APIs. Keep the UI contract ready for a later `/api/chat` stream.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run:
 
@@ -828,7 +828,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/motion/magic-rings* src/components/sections/lounge
