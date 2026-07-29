@@ -105,7 +105,7 @@ playwright.config.ts
 **Interfaces:**
 - Produces: runnable Next.js app and commands `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`.
 
-- [ ] **Step 1: Create package and framework configuration**
+- [x] **Step 1: Create package and framework configuration**
 
 Create scripts:
 
@@ -127,7 +127,7 @@ Create scripts:
 Install runtime dependencies:
 
 ```bash
-pnpm add next@16.2.12 react@19.2.8 react-dom@19.2.8 gsap lucide-react clsx
+pnpm add next@16.2.12 react@19.2.8 react-dom@19.2.8 gsap @gsap/react lucide-react clsx
 ```
 
 Install development dependencies:
@@ -136,7 +136,7 @@ Install development dependencies:
 pnpm add -D typescript @types/node @types/react @types/react-dom tailwindcss @tailwindcss/postcss eslint eslint-config-next vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event @playwright/test
 ```
 
-- [ ] **Step 2: Write the failing root-page test**
+- [x] **Step 2: Write the failing root-page test**
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -149,7 +149,7 @@ it("renders the Ricky 会客厅 shell", () => {
 });
 ```
 
-- [ ] **Step 3: Run the test and verify the empty shell fails**
+- [x] **Step 3: Run the test and verify the empty shell fails**
 
 Run:
 
@@ -159,7 +159,7 @@ pnpm test src/app/page.test.tsx
 
 Expected: FAIL because the page shell and label do not exist.
 
-- [ ] **Step 4: Implement the minimal root layout and page**
+- [x] **Step 4: Implement the minimal root layout and page**
 
 `layout.tsx` must export Chinese metadata and load `globals.css`. `page.tsx` must render:
 
@@ -173,7 +173,7 @@ export default function HomePage() {
 }
 ```
 
-- [ ] **Step 5: Verify the baseline**
+- [x] **Step 5: Verify the baseline**
 
 Run:
 
@@ -186,7 +186,7 @@ pnpm build
 
 Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add package.json pnpm-lock.yaml tsconfig.json next.config.ts postcss.config.mjs eslint.config.mjs src vitest.config.ts vitest.setup.ts playwright.config.ts
