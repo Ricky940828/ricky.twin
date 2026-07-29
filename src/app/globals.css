@@ -4862,6 +4862,85 @@ a {
   font-size: 0.64rem;
 }
 
+.admin-agent-test-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.admin-agent-test-questions button {
+  border: 1px solid rgb(192 132 252 / 0.1);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgb(255 255 255 / 0.018);
+  color: rgb(245 242 250 / 0.4);
+  font-size: 0.56rem;
+  cursor: pointer;
+}
+
+.admin-agent-test-questions button:hover,
+.admin-agent-test-questions button.is-active {
+  border-color: rgb(192 132 252 / 0.28);
+  background: rgb(168 85 247 / 0.08);
+  color: rgb(216 180 254 / 0.78);
+}
+
+.admin-agent-test-result {
+  display: grid;
+  gap: 13px;
+  border: 1px solid rgb(192 132 252 / 0.14);
+  border-radius: 14px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 90% 0, rgb(168 85 247 / 0.08), transparent 15rem),
+    rgb(7 6 10 / 0.46);
+}
+
+.admin-agent-test-result > header,
+.admin-agent-test-result > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-agent-test-result header span {
+  border: 1px solid rgb(192 132 252 / 0.16);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: rgb(216 180 254 / 0.68);
+  font-size: 0.54rem;
+}
+
+.admin-agent-test-result header span[data-mode="live"] {
+  border-color: rgb(16 185 129 / 0.16);
+  color: rgb(110 231 183 / 0.68);
+}
+
+.admin-agent-test-result header small,
+.admin-agent-test-result footer small {
+  color: rgb(245 242 250 / 0.3);
+  font-size: 0.54rem;
+}
+
+.admin-agent-test-result > p {
+  margin: 0;
+  color: rgb(245 242 250 / 0.72);
+  font-size: 0.7rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.admin-agent-test-result > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid rgb(192 132 252 / 0.08);
+  padding-top: 11px;
+  color: rgb(216 180 254 / 0.54);
+  font-size: 0.58rem;
+}
+
 .admin-agent-tools {
   display: grid;
   gap: 9px;

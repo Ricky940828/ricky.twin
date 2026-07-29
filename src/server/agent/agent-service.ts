@@ -204,9 +204,15 @@ export function createAgentService(
   };
 }
 
+let storeSingleton: AgentStore | undefined;
 let singleton: AgentService | undefined;
 
+export function getAgentStore() {
+  storeSingleton ??= createFileAgentStore();
+  return storeSingleton;
+}
+
 export function getAgentService() {
-  singleton ??= createAgentService(createFileAgentStore());
+  singleton ??= createAgentService(getAgentStore());
   return singleton;
 }

@@ -9,6 +9,7 @@ import {
   Save,
   Send,
   ShieldCheck,
+  TestTube2,
   Wrench,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -30,6 +31,13 @@ import type {
   AdminKnowledgeResponse,
   AdminKnowledgeWorkspace,
 } from "@/server/knowledge/knowledge-service";
+import type { ChatResult } from "@/server/chat/chat-types";
+
+const STANDARD_TEST_QUESTIONS = [
+  "你如何判断一个机构合作是否值得推进？",
+  "你的金融能力如何使用 AI 解决方案实际应用？",
+  "企业知识库为什么不只是把文件上传进去？",
+];
 
 const PROMPT_FIELDS: Array<{
   key: keyof AgentPromptProtocol;
@@ -173,6 +181,11 @@ export function AgentManager() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [testQuestion, setTestQuestion] = useState(
+    STANDARD_TEST_QUESTIONS[0],
+  );
+  const [testResult, setTestResult] = useState<ChatResult | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
 
   const activeModel = useMemo(
     () =>
@@ -285,6 +298,38 @@ export function AgentManager() {
     }
   };
 
+  const runTest = async () => {
+    if (dirty) {
+      setError("请先保存草稿，再运行测试台");
+      return;
+    }
+    if (!testQuestion.trim()) {
+      setError("请输入测试问题");
+      return;
+    }
+    setTestBusy(true);
+    setError("");
+    setMessage("");
+    setTestResult(null);
+    try {
+      const response = await fetch("/api/admin/agent/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: testQuestion }),
+      });
+      const result = (await response.json()) as ChatResult;
+      if (!result.answer) {
+        setError(result.message ?? "Agent 测试没有返回有效回答");
+        return;
+      }
+      setTestResult(result);
+    } catch {
+      setError("Agent 测试台暂时无法运行");
+    } finally {
+      setTestBusy(false);
+    }
+  };
+
   if (!workspace || !draft) {
     return (
       <section className="admin-module-loading">
@@ -368,6 +413,93 @@ export function AgentManager() {
           {message}
         </div>
       ) : null}
+
+      <EditorPanel
+        action={
+          <button
+            aria-label="运行标准测试"
+            className="admin-button is-primary"
+            disabled={testBusy || dirty || !testQuestion.trim()}
+            onClick={() => void runTest()}
+            type="button"
+          >
+            <TestTube2 aria-hidden size={15} />
+            {testBusy ? "测试中…" : "运行测试"}
+          </button>
+        }
+        description="使用已保存的 Agent 草稿和当前主模型，以本人权限检索关联知识；不会消耗公开访客额度。"
+        title="Agent 测试台"
+      >
+        <div className="admin-agent-test-questions">
+          {STANDARD_TEST_QUESTIONS.map((question) => (
+            <button
+              key={question}
+              className={testQuestion === question ? "is-active" : ""}
+              onClick={() => {
+                setTestQuestion(question);
+                setTestResult(null);
+              }}
+              type="button"
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+        <TextAreaField
+          aria-label="Agent 测试问题"
+          hint="也可以直接修改为任意真实问题"
+          label="测试问题"
+          onChange={(event) => {
+            setTestQuestion(event.target.value);
+            setTestResult(null);
+          }}
+          rows={3}
+          value={testQuestion}
+        />
+        {testResult ? (
+          <div className="admin-agent-test-result">
+            <header>
+              <span data-mode={testResult.mode}>
+                {testResult.mode === "live"
+                  ? "实时模型"
+                  : testResult.mode === "demo"
+                    ? "透明演示"
+                    : "边界拦截"}
+              </span>
+              <small>
+                {testResult.meta.retrievalCount} 个召回片段 ·{" "}
+                {testResult.meta.latencyMs} ms
+                {testResult.meta.modelName
+                  ? ` · ${testResult.meta.modelName}`
+                  : ""}
+              </small>
+            </header>
+            <p>{testResult.answer}</p>
+            {testResult.boundary ? (
+              <div>
+                <ShieldCheck aria-hidden size={14} />
+                {testResult.boundary}
+              </div>
+            ) : null}
+            <footer>
+              <small>
+                边界动作：
+                {testResult.nextAction === "request-access"
+                  ? "申请知识权限"
+                  : testResult.nextAction === "leave-contact"
+                    ? "引导进一步沟通"
+                    : "无"}
+              </small>
+              {testResult.meta.knowledgeBaseNames?.length ? (
+                <small>
+                  命中语义库：
+                  {testResult.meta.knowledgeBaseNames.join("、")}
+                </small>
+              ) : null}
+            </footer>
+          </div>
+        ) : null}
+      </EditorPanel>
 
       <EditorPanel
         description="这些字段会被服务端编译成统一系统协议，不依赖具体模型厂商。"

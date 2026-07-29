@@ -23,6 +23,7 @@ import { MagicRings } from "@/components/motion/magic-rings";
 import type { KnowledgeBadge, LoungeContent } from "@/content/types";
 import { useIntersectionActive } from "@/hooks/use-intersection-active";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
+import type { ChatResult } from "@/server/chat/chat-types";
 
 import {
   initialLoungeState,
@@ -240,14 +241,60 @@ export function LoungeSection({ content }: LoungeSectionProps) {
   });
 
   useEffect(() => {
-    if (state.status !== "thinking") {
+    if (state.status !== "thinking" || !state.pendingQuestion) {
       return;
     }
-    const timer = window.setTimeout(() => {
-      dispatch({ type: "resolve" });
-    }, 520);
-    return () => window.clearTimeout(timer);
-  }, [state.status, state.pendingQuestion]);
+    const controller = new AbortController();
+    const ask = async () => {
+      try {
+        const history = state.messages
+          .slice(0, -1)
+          .map((message) => ({
+            role:
+              message.role === "visitor"
+                ? ("user" as const)
+                : ("assistant" as const),
+            content: message.text,
+          }));
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: state.pendingQuestion,
+            history,
+          }),
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as ChatResult;
+        if (!result.answer) {
+          throw new Error("missing-answer");
+        }
+        dispatch({
+          type: "resolve",
+          mode: result.mode,
+          reply: {
+            answer: result.answer,
+            boundary: result.boundary,
+            nextAction: result.nextAction,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+        dispatch({
+          type: "fail",
+          message:
+            "数字分身暂时无法连接服务，请稍后再试，或先浏览公开的职业与项目内容。",
+        });
+      }
+    };
+    void ask();
+    return () => controller.abort();
+  }, [state.messages, state.pendingQuestion, state.status]);
 
   useEffect(() => {
     if (!permissionOpen && !leadOpen) {
@@ -332,7 +379,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
           <div className="lounge-avatar-panel__caption">
             <span>RICKY.TWIN / RECEPTION</span>
             <strong>可以从一个真实问题开始。</strong>
-            <p>当前为高完成度交互原型，回答由本地预设逻辑模拟。</p>
+            <p>服务端先执行用量与知识权限校验，再有限检索并调用当前模型。</p>
           </div>
         </div>
 
@@ -342,7 +389,15 @@ export function LoungeSection({ content }: LoungeSectionProps) {
               <MessageCircle aria-hidden size={17} />
               <span>
                 <strong>Ricky 数字接待台</strong>
-                <small>SIMULATED AGENT · V1</small>
+                <small>
+                  {state.lastMode === "live"
+                    ? "LIVE AGENT · RAG"
+                    : state.lastMode === "demo"
+                      ? "DEMO MODE · MODEL OFFLINE"
+                      : state.lastMode === "blocked"
+                        ? "PROTECTED · RETRY LATER"
+                        : "AGENT READY · V1"}
+                </small>
               </span>
             </div>
             <button

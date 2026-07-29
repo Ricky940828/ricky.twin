@@ -91,6 +91,20 @@ describe("AgentManager", () => {
             },
           });
         }
+        if (url.endsWith("/api/admin/agent/test")) {
+          return Response.json({
+            ok: true,
+            mode: "live",
+            answer: "先判断合作主体，再验证资产、收益和落地条件。",
+            nextAction: "none",
+            meta: {
+              retrievalCount: 1,
+              latencyMs: 168,
+              modelName: "主模型",
+              knowledgeBaseNames: ["公开职业资料"],
+            },
+          });
+        }
         return Response.json({
           ok: true,
           workspace,
@@ -106,6 +120,7 @@ describe("AgentManager", () => {
     await user.type(screen.getByLabelText("Agent 名称"), "Ricky 会客厅接待员");
     await user.click(screen.getByRole("button", { name: "保存 Agent 草稿" }));
     await user.click(screen.getByRole("button", { name: "发布 Agent 配置" }));
+    await user.click(screen.getByRole("button", { name: "运行标准测试" }));
 
     expect(
       requests.some(
@@ -120,5 +135,9 @@ describe("AgentManager", () => {
     ).toBe(true);
     expect(screen.getByText("必需")).toBeInTheDocument();
     expect(screen.getByText("公开职业资料")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/先判断合作主体/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/1 个召回片段/)).toBeInTheDocument();
   });
 });

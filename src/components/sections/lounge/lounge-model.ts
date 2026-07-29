@@ -18,11 +18,13 @@ export interface LoungeState {
   pendingQuestion?: string;
   pulseKey: number;
   hasPulsed: boolean;
+  lastMode?: "live" | "demo" | "blocked";
 }
 
 export type LoungeEvent =
   | { type: "submit"; question: string }
-  | { type: "resolve" };
+  | { type: "resolve"; reply?: LoungeReply; mode?: LoungeState["lastMode"] }
+  | { type: "fail"; message: string };
 
 const REPLIES: Record<string, LoungeReply> = {
   institution: {
@@ -121,11 +123,13 @@ export function loungeReducer(
       if (!state.pendingQuestion || state.status !== "thinking") {
         return state;
       }
-      const reply = getSimulatedReply(state.pendingQuestion);
+      const reply =
+        event.reply ?? getSimulatedReply(state.pendingQuestion);
       return {
         ...state,
         status: "answered",
         pendingQuestion: undefined,
+        lastMode: event.mode ?? state.lastMode,
         messages: [
           ...state.messages,
           {
@@ -134,6 +138,26 @@ export function loungeReducer(
             text: reply.answer,
             boundary: reply.boundary,
             nextAction: reply.nextAction,
+          },
+        ],
+      };
+    }
+    case "fail": {
+      if (state.status !== "thinking") {
+        return state;
+      }
+      return {
+        ...state,
+        status: "answered",
+        pendingQuestion: undefined,
+        lastMode: "blocked",
+        messages: [
+          ...state.messages,
+          {
+            id: `assistant-${state.messages.length + 1}`,
+            role: "assistant",
+            text: event.message,
+            nextAction: "none",
           },
         ],
       };

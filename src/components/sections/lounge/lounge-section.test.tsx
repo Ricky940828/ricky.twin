@@ -1,12 +1,35 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { siteContent } from "@/content/site-content";
 
 import { LoungeSection } from "./lounge-section";
 
 afterEach(() => {
-  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        ok: true,
+        mode: "live",
+        answer:
+          "我通常先看四件事：主体、资产、风险收益和产品落地条件。",
+        nextAction: "none",
+        meta: { retrievalCount: 1, latencyMs: 120 },
+      }),
+    ),
+  );
 });
 
 describe("LoungeSection", () => {
@@ -24,8 +47,7 @@ describe("LoungeSection", () => {
     });
   });
 
-  it("answers in the lounge without showing file paths or source-topic lists", () => {
-    vi.useFakeTimers();
+  it("answers in the lounge without showing file paths or source-topic lists", async () => {
     render(<LoungeSection content={siteContent.lounge} />);
 
     fireEvent.click(
@@ -33,13 +55,13 @@ describe("LoungeSection", () => {
         name: "你如何判断一个机构合作是否值得推进？",
       }),
     );
-    act(() => {
-      vi.advanceTimersByTime(700);
-    });
 
-    expect(screen.getByText(/我通常先看四件事/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/我通常先看四件事/),
+    ).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\/Users\/|00-工作台/);
     expect(document.body.textContent).not.toContain("本回答使用知识库");
+    expect(screen.getByText("LIVE AGENT · RAG")).toBeInTheDocument();
   });
 
   it("opens permission and contact prompts from explicit actions", () => {
@@ -63,8 +85,7 @@ describe("LoungeSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("increments the Magic Rings pulse key only once", () => {
-    vi.useFakeTimers();
+  it("increments the Magic Rings pulse key only once", async () => {
     render(<LoungeSection content={siteContent.lounge} />);
 
     const first = screen.getByRole("button", {
@@ -75,9 +96,7 @@ describe("LoungeSection", () => {
       "data-pulse-key",
       "1",
     );
-    act(() => {
-      vi.advanceTimersByTime(700);
-    });
+    await screen.findByText(/我通常先看四件事/);
     fireEvent.click(
       screen.getByRole("button", {
         name: siteContent.lounge.quickQuestions[1],
