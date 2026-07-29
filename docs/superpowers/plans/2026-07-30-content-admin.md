@@ -233,11 +233,11 @@ git commit -m "feat: protect admin workspace with signed session"
 - Consumes: `ContentStore`, signed admin requests, and validation results.
 - Produces: authenticated draft/save/publish/version APIs and a dynamic public page backed by `getPublished()`.
 
-- [ ] **Step 1: Write failing service tests**
+- [x] **Step 1: Write failing service tests**
 
 Assert saving rejects invalid content without writing, valid draft save returns updated metadata, blank publish notes are normalized to “内容更新”, and public reads remain on the old snapshot until publish.
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run:
 
@@ -247,7 +247,7 @@ pnpm test src/server/content/content-service.test.ts
 
 Expected: FAIL because the service does not exist.
 
-- [ ] **Step 3: Implement content service and API responses**
+- [x] **Step 3: Implement content service and API responses**
 
 Return:
 
@@ -259,7 +259,7 @@ type AdminContentResponse =
 
 Require admin authentication before reading the draft or any version metadata.
 
-- [ ] **Step 4: Switch the public page to the published store**
+- [x] **Step 4: Switch the public page to the published store**
 
 Make the root route dynamic, read `getPublished()` on the server, and pass the result to:
 
@@ -269,7 +269,7 @@ Make the root route dynamic, read `getPublished()` on the server, and pass the r
 
 The public route must never import draft state.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 

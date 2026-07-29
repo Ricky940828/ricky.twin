@@ -1,11 +1,19 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import { siteContent } from "@/content/site-content";
 
 import HomePage from "./page";
 
+vi.mock("@/server/content/content-service", () => ({
+  getContentService: () => ({
+    getPublished: async () => structuredClone(siteContent),
+  }),
+}));
+
 describe("HomePage", () => {
-  it("renders the Ricky 会客厅 shell", () => {
-    render(<HomePage />);
+  it("renders the Ricky 会客厅 shell", async () => {
+    render(await HomePage());
 
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("Ricky 会客厅")).toBeInTheDocument();
