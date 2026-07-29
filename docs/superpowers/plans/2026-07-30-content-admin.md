@@ -116,11 +116,11 @@ export function createFileContentStore(options?: {
 }): ContentStore;
 ```
 
-- [ ] **Step 1: Write failing repository tests**
+- [x] **Step 1: Write failing repository tests**
 
 Use a test-scoped temporary directory. Assert first read seeds both draft and published content, draft save does not change published content, publish copies the draft to published, a publish creates a version file and metadata entry, and a fresh store instance reads the saved state.
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run:
 
@@ -130,7 +130,7 @@ pnpm test src/server/content/file-content-store.test.ts
 
 Expected: FAIL because the store does not exist.
 
-- [ ] **Step 3: Implement the filesystem adapter**
+- [x] **Step 3: Implement the filesystem adapter**
 
 Use `fs.mkdir`, `fs.readFile`, `fs.writeFile`, and `fs.rename`. Write to a sibling temporary file before renaming. Store:
 
@@ -141,11 +141,11 @@ Use `fs.mkdir`, `fs.readFile`, `fs.writeFile`, and `fs.rename`. Write to a sibli
 
 Generate version IDs from UTC timestamps plus a short random suffix. Never mutate the imported seed object.
 
-- [ ] **Step 4: Add corruption fallback**
+- [x] **Step 4: Add corruption fallback**
 
 If the workspace file is missing, seed it. If it is invalid JSON or fails validation, retain the broken file, return the checked-in seed as the safe public fallback, and surface a repository warning for the admin response.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
