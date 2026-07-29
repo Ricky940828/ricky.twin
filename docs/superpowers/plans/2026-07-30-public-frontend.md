@@ -576,7 +576,7 @@ git commit -m "feat: build digital twin reception hero"
 - Produces: `interpolateRadar(previous, current, localProgress): RadarTuple`.
 - Produces: `<CareerSection stages axes />`.
 
-- [ ] **Step 1: Write career model tests**
+- [x] **Step 1: Write career model tests**
 
 Cover progress `0`, node boundaries, progress `1`, radar interpolation, and invalid input clamping.
 
@@ -587,11 +587,11 @@ expect(interpolateRadar([1,1,1,1,1,1], [2,2,2,2,2,2], 0.5))
   .toEqual([1.5,1.5,1.5,1.5,1.5,1.5]);
 ```
 
-- [ ] **Step 2: Write interaction test**
+- [x] **Step 2: Write interaction test**
 
 Assert the first stage card opens initially, `下一站：还呗 →` activates the second stage, and the last stage displays `查看代表项目 →`.
 
-- [ ] **Step 3: Verify failure**
+- [x] **Step 3: Verify failure**
 
 Run:
 
@@ -601,11 +601,11 @@ pnpm test src/components/sections/career
 
 Expected: FAIL because the route and radar are absent.
 
-- [ ] **Step 4: Implement radar**
+- [x] **Step 4: Implement radar**
 
 Use responsive SVG. Render four grid levels, six axis labels, a low-opacity previous-stage outline, and a purple current polygon. Display maturity labels instead of numeric scores.
 
-- [ ] **Step 5: Implement scroll-driven route**
+- [x] **Step 5: Implement scroll-driven route**
 
 Register GSAP and ScrollTrigger only in the browser. Pin the desktop route during its scroll range. On update:
 
@@ -615,11 +615,11 @@ Register GSAP and ScrollTrigger only in the browser. Pin the desktop route durin
 - illuminate completed path;
 - update the stage card and radar.
 
-- [ ] **Step 6: Implement guided movement**
+- [x] **Step 6: Implement guided movement**
 
 The stage CTA scrolls to the next stage’s progress point. Manual wheel, touch, or keyboard scrolling cancels the active guided animation. Mobile uses vertical nodes and native smooth scrolling.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Run:
 
@@ -631,7 +631,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/lib/gsap-client.ts src/components/sections/career
