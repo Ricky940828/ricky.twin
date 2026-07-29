@@ -33,11 +33,11 @@
 - Consumes: `SiteContent` and the checked-in `siteContent` seed.
 - Produces: `ContentWorkspace`, `ContentVersionMeta`, `validateSiteContent(value): ValidationResult`, and `cloneSiteContent(content): SiteContent`.
 
-- [ ] **Step 1: Write failing validation tests**
+- [x] **Step 1: Write failing validation tests**
 
 Assert that validation accepts the complete seed, rejects duplicate section orders, rejects a missing required section, rejects a radar value outside `1..4`, and returns field-level issue paths.
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run:
 
@@ -47,7 +47,7 @@ pnpm test src/server/content/content-validation.test.ts
 
 Expected: FAIL because the workspace and validator do not exist.
 
-- [ ] **Step 3: Implement the content workspace types**
+- [x] **Step 3: Implement the content workspace types**
 
 Define:
 
@@ -69,11 +69,11 @@ export interface ContentWorkspace {
 
 Add a discriminated validation result with `{ ok: true; value }` and `{ ok: false; issues }`.
 
-- [ ] **Step 4: Implement deterministic runtime validation**
+- [x] **Step 4: Implement deterministic runtime validation**
 
 Validate the complete `SiteContent` shape, all five required section IDs, unique orders and IDs, six radar axes, six radar values per stage, four ordered solution-path labels, supported practice statuses/icons, and supported knowledge access states. Return paths such as `career[1].radar[3]`.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
@@ -475,4 +475,3 @@ Expected: all checks pass; only intentional source and plan files remain.
 git add tests/e2e/admin-content.spec.ts playwright.config.ts docs/superpowers/plans/2026-07-30-content-admin.md
 git commit -m "test: verify content admin publishing loop"
 ```
-
