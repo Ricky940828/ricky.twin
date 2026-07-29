@@ -14,6 +14,7 @@ import {
   ContentEditor,
   type AdminEditorId,
 } from "@/components/admin/content-editor";
+import { LivePreview } from "@/components/admin/live-preview";
 
 type SessionState = "checking" | "unauthenticated" | "authenticated";
 
@@ -129,6 +130,33 @@ export function AdminWorkspace() {
     setSessionState("unauthenticated");
   };
 
+  const publishDraft = async (note: string) => {
+    if (saveState !== "saved") {
+      setError("请先保存草稿，再发布到正式站");
+      return false;
+    }
+    setError("");
+    try {
+      const response = await fetch("/api/admin/content/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      });
+      const result = (await response.json()) as AdminContentResponse;
+      if (!result.ok) {
+        setError(result.message);
+        return false;
+      }
+      setWorkspace(result.workspace);
+      setDraft(structuredClone(result.workspace.draft));
+      setSaveState("saved");
+      return true;
+    } catch {
+      setError("发布失败，正式站仍保持上一版本");
+      return false;
+    }
+  };
+
   if (sessionState === "checking") {
     return (
       <main className="admin-loading">
@@ -167,16 +195,25 @@ export function AdminWorkspace() {
       saveState={saveState}
       versionLabel={`正式版本 ${workspace.publishedVersion.id}`}
     >
-      {error ? (
-        <div className="admin-form-error" role="alert">
-          {error}
+      <div className="admin-content-layout">
+        <div className="admin-content-layout__editor">
+          {error ? (
+            <div className="admin-form-error" role="alert">
+              {error}
+            </div>
+          ) : null}
+          <ContentEditor
+            activeEditor={activeEditor}
+            content={draft}
+            onChange={updateDraft}
+          />
         </div>
-      ) : null}
-      <ContentEditor
-        activeEditor={activeEditor}
-        content={draft}
-        onChange={updateDraft}
-      />
+        <LivePreview
+          canPublish={saveState === "saved"}
+          content={draft}
+          onPublish={publishDraft}
+        />
+      </div>
     </AdminShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import {
   type ComponentType,
+  type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -85,6 +86,21 @@ export function SectionRenderer({
   const activeSection = enabledSectionIds.includes(observedSection)
     ? observedSection
     : (enabledSectionIds[0] ?? "hero");
+
+  const keepPreviewInSandbox = (
+    event: ReactMouseEvent<HTMLDivElement>,
+  ) => {
+    if (mode !== "preview") {
+      return;
+    }
+    const target =
+      event.target instanceof Element
+        ? event.target.closest("a")
+        : null;
+    if (target) {
+      event.preventDefault();
+    }
+  };
 
   const scrollToSection = useCallback((section: SiteSectionId) => {
     const element = document.getElementById(section);
@@ -181,6 +197,7 @@ export function SectionRenderer({
       className="site-shell"
       data-render-mode={mode}
       data-testid="site-renderer"
+      onClickCapture={keepPreviewInSandbox}
     >
       <DotField />
       <SiteHeader

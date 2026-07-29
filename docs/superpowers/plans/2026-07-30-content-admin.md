@@ -369,11 +369,11 @@ git commit -m "feat: add focused frontend content editor"
 - Consumes: the editor’s current complete draft.
 - Produces: `LivePreview` with `desktop | tablet | mobile`, full-screen preview, replay, and explicit publish workflow.
 
-- [ ] **Step 1: Write failing preview tests**
+- [x] **Step 1: Write failing preview tests**
 
 Assert device buttons set frame widths `1440`, `820`, and `390`; draft changes post a `ricky:content-preview` message; full-screen opens `/admin/preview`; and publish requires a note confirmation.
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run:
 
@@ -383,7 +383,7 @@ pnpm test src/components/admin/live-preview.test.tsx
 
 Expected: FAIL because the preview bridge does not exist.
 
-- [ ] **Step 3: Implement the preview route**
+- [x] **Step 3: Implement the preview route**
 
 Fetch the authenticated draft once, listen only to same-origin messages shaped as:
 
@@ -397,15 +397,15 @@ Fetch the authenticated draft once, listen only to same-origin messages shaped a
 
 Render `<SectionRenderer key={replayKey} mode="preview" site={draft} />`.
 
-- [ ] **Step 4: Disable preview side effects**
+- [x] **Step 4: Disable preview side effects**
 
 In preview mode prevent external anchors from navigating and keep the lounge on simulated answers. Do not emit visit events. Keep internal section navigation and all visual interactions active.
 
-- [ ] **Step 5: Implement device and publish controls**
+- [x] **Step 5: Implement device and publish controls**
 
 The parent admin page sizes the iframe, posts every draft change, exposes “重播动效” and “全屏预览”, and calls the publish endpoint only after a confirmation dialog with a release note.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 

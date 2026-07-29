@@ -67,4 +67,19 @@ describe("SectionRenderer", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText(siteContent.hero.statement)).toBeInTheDocument();
   });
+
+  it("keeps external destinations inert in draft preview mode", () => {
+    render(<SectionRenderer mode="preview" site={siteContent} />);
+
+    const externalLink = screen.getByRole("link", {
+      name: /打开 .*在新标签页打开/,
+    });
+    const click = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    });
+    externalLink.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(true);
+  });
 });
