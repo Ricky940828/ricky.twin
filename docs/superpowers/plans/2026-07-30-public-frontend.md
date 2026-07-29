@@ -719,11 +719,11 @@ git commit -m "feat: add project card swap narrative"
 - Consumes: `PracticeLink[]`.
 - Produces: `<PracticeSection links />`.
 
-- [ ] **Step 1: Write practice tests**
+- [x] **Step 1: Write practice tests**
 
 Assert every visible item renders title, description, type, and status. Items with a configured URL render an external link; items awaiting a URL render a disabled `即将开放` action. Assert hidden items do not render and reordered data changes visual order.
 
-- [ ] **Step 2: Verify failure**
+- [x] **Step 2: Verify failure**
 
 Run:
 
@@ -733,11 +733,11 @@ pnpm test src/components/sections/practice-section.test.tsx
 
 Expected: FAIL because the practice section is absent.
 
-- [ ] **Step 3: Implement the practice grid**
+- [x] **Step 3: Implement the practice grid**
 
 Render deep-purple glass cards with icon, short explanation, live status, and external-action affordance. Use `TargetLock` on each card. The component must consume the same objects used by the hero practice dock. Configure AI Token 中转站 as `https://api.aicenter.net.cn`; keep AIGC 工具站、咖啡操作台和 GitHub visible with `即将开放` until their destination URLs enter the content record.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -749,7 +749,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/sections/practice-section*
