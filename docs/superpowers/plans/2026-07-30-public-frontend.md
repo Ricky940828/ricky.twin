@@ -513,11 +513,11 @@ git commit -m "feat: integrate digital twin character and identity badge"
 - Produces: `<SiteHeader sections activeSection />`.
 - Produces: `<HeroSection content practiceLinks onNavigate />`.
 
-- [ ] **Step 1: Write hero copy and navigation tests**
+- [x] **Step 1: Write hero copy and navigation tests**
 
 Assert the exact welcome copy, four identity tags, AI lounge primary button, career secondary button, four initial practice links, and accessible labels.
 
-- [ ] **Step 2: Verify failure**
+- [x] **Step 2: Verify failure**
 
 Run:
 
@@ -527,19 +527,19 @@ pnpm test src/components/sections/hero-section.test.tsx src/components/motion/pr
 
 Expected: FAIL because hero components do not exist.
 
-- [ ] **Step 3: Implement `PressureTitle`**
+- [x] **Step 3: Implement `PressureTitle`**
 
 Split `RICKY` into letters. Convert pointer distance into bounded `scaleX`, `translateY`, and weight changes. Disable pointer transformation in reduced-motion mode.
 
-- [ ] **Step 4: Implement hero composition**
+- [x] **Step 4: Implement hero composition**
 
 Use a two-column desktop composition and a single-column mobile composition. Place the practice dock below the character. Wrap each practice link in `TargetLock`. Open external links in a new tab with `rel="noreferrer"`.
 
-- [ ] **Step 5: Implement sticky header**
+- [x] **Step 5: Implement sticky header**
 
 Generate navigation from enabled section IDs. Keep `进入 AI 会客厅` visually primary and synchronize active section without hard-coding disabled sections.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run:
 
@@ -551,7 +551,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/layout/site-header.tsx src/components/motion/pressure-title* src/components/sections/hero-section*

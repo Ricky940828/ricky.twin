@@ -94,7 +94,7 @@ export function CharacterVideo({
     }
 
     if (active) {
-      video.play().catch(() => {
+      video.play()?.catch(() => {
         // The poster remains visible if autoplay is blocked.
       });
       return;

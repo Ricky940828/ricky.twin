@@ -10,6 +10,7 @@ interface TargetLockProps
   extends PropsWithChildren<HTMLAttributes<HTMLElement>> {
   as?: ElementType;
   active?: boolean;
+  "data-testid"?: string;
 }
 
 const CORNERS = ["top-left", "top-right", "bottom-right", "bottom-left"];
@@ -19,6 +20,7 @@ export function TargetLock({
   active = false,
   children,
   className,
+  "data-testid": testId,
   ...props
 }: TargetLockProps) {
   return (
@@ -26,7 +28,7 @@ export function TargetLock({
       {...props}
       className={cn("target-lock", className)}
       data-active={active ? "true" : "false"}
-      data-testid="target-lock"
+      data-testid={testId ?? "target-lock"}
       style={{ ...props.style, cursor: "inherit" }}
     >
       {CORNERS.map((corner) => (
