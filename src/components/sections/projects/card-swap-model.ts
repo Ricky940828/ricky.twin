@@ -17,6 +17,28 @@ function clampIndex(index: number, count: number) {
   return Math.min(count - 1, Math.max(0, Math.floor(index)));
 }
 
+export function getCardIndexForScroll(
+  progress: number,
+  count: number,
+) {
+  const safeCount = normalizedCount(count);
+  const boundedProgress = Number.isFinite(progress)
+    ? Math.min(1, Math.max(0, progress))
+    : 0;
+  return Math.min(
+    safeCount - 1,
+    Math.floor(boundedProgress * safeCount),
+  );
+}
+
+export function getCardScrollProgress(index: number, count: number) {
+  const safeCount = normalizedCount(count);
+  if (safeCount <= 1) {
+    return 0;
+  }
+  return clampIndex(index, safeCount) / (safeCount - 1);
+}
+
 export function createCardSwapState(
   count: number,
   activeIndex = 0,

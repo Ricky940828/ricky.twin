@@ -1,7 +1,11 @@
 "use client";
 
 import { useGSAP } from "@gsap/react";
-import { useRef, type KeyboardEvent, type WheelEvent } from "react";
+import {
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 
 import { TargetLock } from "@/components/motion/target-lock";
 import type { ProjectTheme } from "@/content/types";
@@ -12,6 +16,17 @@ interface CardSwapProps {
   activeIndex: number;
   onChange: (index: number) => void;
   onOpen: (project: ProjectTheme) => void;
+}
+
+const CARD_STEP_X = 42;
+const CARD_STEP_Y = 24;
+
+interface PointerDrag {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  deltaX: number;
+  deltaY: number;
 }
 
 function getVisibleProjects(projects: ProjectTheme[], activeIndex: number) {
@@ -29,7 +44,8 @@ export function CardSwap({
 }: CardSwapProps) {
   const stackRef = useRef<HTMLDivElement>(null);
   const previousIndexRef = useRef(activeIndex);
-  const lastWheelTimeRef = useRef(0);
+  const dragRef = useRef<PointerDrag | null>(null);
+  const suppressClickRef = useRef(false);
   const visibleProjects = getVisibleProjects(projects, activeIndex);
 
   useGSAP(
@@ -52,11 +68,11 @@ export function CardSwap({
 
       cards.forEach((card, layer) => {
         gsap.set(card, {
-          x: layer * 22,
-          y: layer * 18,
-          scale: 1 - layer * 0.035,
-          rotation: layer * 0.8,
-          opacity: 1 - layer * 0.13,
+          x: layer * CARD_STEP_X,
+          y: layer * CARD_STEP_Y,
+          scale: 1 - layer * 0.025,
+          rotation: layer * 1.05,
+          opacity: 1 - layer * 0.08,
           zIndex: 20 - layer,
           force3D: true,
         });
@@ -94,8 +110,8 @@ export function CardSwap({
           timeline.set(
             outgoing,
             {
-              y: Math.min(3, cards.length - 1) * 18,
-              opacity: 0.58,
+              y: Math.min(3, cards.length - 1) * CARD_STEP_Y,
+              opacity: 0.76,
             },
             0.44,
           );
@@ -128,24 +144,83 @@ export function CardSwap({
     }
   };
 
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    const now = Date.now();
-    if (Math.abs(event.deltaY) < 24 || now - lastWheelTimeRef.current < 520) {
+  const activeCard = () =>
+    stackRef.current?.querySelector<HTMLElement>(
+      '[data-layer="0"][data-project-card]',
+    ) ?? null;
+
+  const settleActiveCard = () => {
+    const card = activeCard();
+    if (!card) {
+      return;
+    }
+    gsap.to(card, {
+      x: 0,
+      y: 0,
+      rotation: 0,
+      duration: 0.48,
+      ease: "elastic.out(0.8, 0.68)",
+      overwrite: true,
+    });
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (
+      typeof event.button === "number" &&
+      event.button !== 0
+    ) {
+      return;
+    }
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      deltaX: 0,
+      deltaY: 0,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.currentTarget.dataset.dragging = "true";
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    drag.deltaX = event.clientX - drag.startX;
+    drag.deltaY = event.clientY - drag.startY;
+    const card = activeCard();
+    if (!card) {
+      return;
+    }
+    gsap.set(card, {
+      x: drag.deltaX * 0.32,
+      y: drag.deltaY * 0.08,
+      rotation: drag.deltaX * 0.018,
+      force3D: true,
+    });
+  };
+
+  const finishPointer = (
+    event: PointerEvent<HTMLDivElement>,
+    cancelled = false,
+  ) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
       return;
     }
 
-    const direction = event.deltaY > 0 ? 1 : -1;
-    const nextIndex = Math.min(
-      projects.length - 1,
-      Math.max(0, activeIndex + direction),
-    );
-    if (nextIndex === activeIndex) {
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    event.currentTarget.dataset.dragging = "false";
+    dragRef.current = null;
+
+    const moved = Math.hypot(drag.deltaX, drag.deltaY);
+    suppressClickRef.current = moved > 8;
+    if (!cancelled && Math.abs(drag.deltaX) >= 64) {
+      changeBy(drag.deltaX < 0 ? 1 : -1);
       return;
     }
-
-    event.preventDefault();
-    lastWheelTimeRef.current = now;
-    onChange(nextIndex);
+    settleActiveCard();
   };
 
   return (
@@ -154,7 +229,10 @@ export function CardSwap({
       aria-label="代表项目卡片"
       className="card-swap"
       onKeyDown={handleKeyDown}
-      onWheel={handleWheel}
+      onPointerCancel={(event) => finishPointer(event, true)}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={(event) => finishPointer(event)}
       role="region"
       tabIndex={0}
     >
@@ -172,7 +250,12 @@ export function CardSwap({
             data-layer={layer}
             data-project-card
             data-project-index={index}
+            draggable={false}
             onClick={() => {
+              if (suppressClickRef.current) {
+                suppressClickRef.current = false;
+                return;
+              }
               if (isActive) {
                 onOpen(project);
               } else {

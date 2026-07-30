@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "@fontsource-variable/roboto-flex/full.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

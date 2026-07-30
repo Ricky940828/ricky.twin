@@ -6,6 +6,7 @@ const contentDataDir = join(
   tmpdir(),
   `ricky-twin-playwright-${process.pid}`,
 );
+const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -16,7 +17,7 @@ export default defineConfig({
   timeout: 30_000,
   workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:43117",
+    baseURL: externalBaseUrl ?? "http://127.0.0.1:43117",
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     video: "retain-on-failure",
@@ -27,15 +28,17 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "pnpm dev --hostname 127.0.0.1 --port 43117",
-    env: {
-      RICKY_ADMIN_PASSWORD: "test-admin",
-      RICKY_ADMIN_SESSION_SECRET:
-        "test-session-secret-for-ricky-twin-e2e",
-      RICKY_CONTENT_DATA_DIR: contentDataDir,
-    },
-    url: "http://127.0.0.1:43117",
-    reuseExistingServer: false,
-  },
+  webServer: externalBaseUrl
+    ? undefined
+    : {
+        command: "pnpm dev --hostname 127.0.0.1 --port 43117",
+        env: {
+          RICKY_ADMIN_PASSWORD: "test-admin",
+          RICKY_ADMIN_SESSION_SECRET:
+            "test-session-secret-for-ricky-twin-e2e",
+          RICKY_CONTENT_DATA_DIR: contentDataDir,
+        },
+        url: "http://127.0.0.1:43117",
+        reuseExistingServer: false,
+      },
 });

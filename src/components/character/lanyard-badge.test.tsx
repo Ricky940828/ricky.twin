@@ -17,6 +17,17 @@ function IdentityHarness() {
 }
 
 describe("LanyardBadge", () => {
+  it("renders a neck loop with two independently curved cords", () => {
+    render(<LanyardBadge onOpenIdentity={vi.fn()} />);
+
+    expect(
+      document.querySelectorAll("[data-lanyard-cord]"),
+    ).toHaveLength(2);
+    expect(
+      document.querySelector(".lanyard-neck-loop"),
+    ).toBeInTheDocument();
+  });
+
   it("moves while dragged and returns to rest on release", () => {
     render(<LanyardBadge onOpenIdentity={vi.fn()} />);
     const badge = screen.getByRole("button", { name: "打开 Ricky 数字身份卡" });
@@ -61,6 +72,14 @@ describe("LanyardBadge", () => {
 
     expect(
       screen.getByRole("dialog", { name: "Ricky 数字身份卡" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "李富豪数字形象" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "翻到背面：知识与权限",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "Escape" });

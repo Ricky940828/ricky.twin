@@ -39,4 +39,29 @@ describe("ProjectsSection", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("supports mouse dragging across the card stack", () => {
+    render(<ProjectsSection projects={siteContent.projects} />);
+
+    const stack = document.querySelector<HTMLElement>(".card-swap");
+    expect(stack).not.toBeNull();
+
+    fireEvent.pointerDown(stack!, {
+      pointerId: 7,
+      clientX: 560,
+      clientY: 320,
+    });
+    fireEvent.pointerMove(stack!, {
+      pointerId: 7,
+      clientX: 410,
+      clientY: 324,
+    });
+    fireEvent.pointerUp(stack!, {
+      pointerId: 7,
+      clientX: 410,
+      clientY: 324,
+    });
+
+    expect(screen.getByText("02 / 04")).toBeInTheDocument();
+  });
 });

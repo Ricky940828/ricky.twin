@@ -8,6 +8,7 @@ describe("PressureTitle", () => {
     render(<PressureTitle text="RICKY" />);
 
     const title = screen.getByRole("heading", { name: "RICKY" });
+    expect(title.parentElement).toHaveAttribute("data-pressure-surface");
     expect(title.querySelectorAll("[data-pressure-letter]")).toHaveLength(5);
   });
 
@@ -15,9 +16,24 @@ describe("PressureTitle", () => {
     const close = getLetterPressure(0.5, 0.5);
     const far = getLetterPressure(0, 1);
 
-    expect(close.scaleX).toBeGreaterThan(far.scaleX);
-    expect(close.scaleX).toBeLessThanOrEqual(1.32);
-    expect(close.translateY).toBeGreaterThanOrEqual(-12);
-    expect(close.weight).toBeLessThanOrEqual(720);
+    expect(close.width).toBeGreaterThan(far.width);
+    expect(close.width).toBeGreaterThanOrEqual(145);
+    expect(far.width).toBeGreaterThanOrEqual(58);
+    expect(close.weight).toBeGreaterThanOrEqual(900);
+    expect(far.weight).toBeGreaterThanOrEqual(220);
+    expect(close.hot).toBe(true);
+    expect(far.hot).toBe(false);
+  });
+
+  it("uses the variable-font axes without a geometric scale fallback", () => {
+    render(<PressureTitle text="RICKY" />);
+
+    const letters = screen
+      .getByRole("heading", { name: "RICKY" })
+      .querySelectorAll<HTMLElement>("[data-pressure-letter]");
+
+    letters.forEach((letter) => {
+      expect(letter.style.transform).toBe("");
+    });
   });
 });

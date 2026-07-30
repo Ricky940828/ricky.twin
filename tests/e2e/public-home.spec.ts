@@ -84,3 +84,172 @@ test("身份工牌可以打开身份卡", async ({ page }) => {
     page.getByRole("dialog", { name: "Ricky 数字身份卡" }),
   ).toBeVisible();
 });
+
+test("首页 Text Pressure 使用本地可变字体并形成极窄到极宽的压力差", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
+
+  const title = page.getByRole("heading", { name: "RICKY" });
+  const letters = title.locator("[data-pressure-letter]");
+  const centerLetter = await letters.nth(2).boundingBox();
+  expect(centerLetter).not.toBeNull();
+
+  await page.mouse.move(
+    centerLetter!.x + centerLetter!.width / 2,
+    centerLetter!.y + centerLetter!.height / 2,
+  );
+  await page.waitForTimeout(520);
+
+  const pressure = await letters.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const element = node as HTMLElement;
+      const settings = element.style.fontVariationSettings;
+      const weight = Number(
+        settings.match(/"wght"\s+(\d+)/)?.[1] ?? 0,
+      );
+      const width = Number(
+        settings.match(/"wdth"\s+(\d+)/)?.[1] ?? 0,
+      );
+      return {
+        family: getComputedStyle(element).fontFamily,
+        hot: element.dataset.hot,
+        weight,
+        width,
+      };
+    }),
+  );
+
+  expect(pressure[2].family).toContain("Roboto Flex Variable");
+  expect(pressure[2].hot).toBe("true");
+  expect(pressure[2].weight).toBeGreaterThanOrEqual(820);
+  expect(pressure[2].width).toBeGreaterThanOrEqual(130);
+  expect(Math.min(pressure[0].width, pressure[4].width)).toBeLessThan(
+    100,
+  );
+  expect(Math.min(pressure[0].weight, pressure[4].weight)).toBeLessThan(
+    600,
+  );
+});
+
+test("职业路线的滚动与节点点击共同驱动人物且人物和经历卡同屏", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const character = page.getByTestId("persistent-character");
+  const experience = page.locator(".career-experience");
+  await experience.scrollIntoViewIfNeeded();
+  await expect(character).toHaveAttribute("data-scene", "career");
+
+  const initialCharacter = await character.boundingBox();
+  await page.mouse.wheel(0, 980);
+  await page.waitForTimeout(450);
+  const movedCharacter = await character.boundingBox();
+
+  expect(initialCharacter).not.toBeNull();
+  expect(movedCharacter).not.toBeNull();
+  expect(
+    Math.hypot(
+      movedCharacter!.x - initialCharacter!.x,
+      movedCharacter!.y - initialCharacter!.y,
+    ),
+  ).toBeGreaterThan(80);
+
+  const card = await page.locator(".career-stage-card").boundingBox();
+  expect(card).not.toBeNull();
+  expect(card!.y).toBeGreaterThanOrEqual(0);
+  expect(card!.y + card!.height).toBeLessThanOrEqual(900);
+  expect(movedCharacter!.y).toBeGreaterThanOrEqual(-10);
+  expect(movedCharacter!.y + movedCharacter!.height).toBeLessThanOrEqual(
+    910,
+  );
+
+  const beforeNodeClick = movedCharacter!;
+  await page
+    .getByRole("button", { name: "查看小象优品阶段" })
+    .click();
+  await expect(page.locator(".career-stage-card h3")).toHaveText("小象优品");
+  await page.waitForTimeout(950);
+  const afterNodeClick = await character.boundingBox();
+  expect(afterNodeClick).not.toBeNull();
+  expect(
+    Math.hypot(
+      afterNodeClick!.x - beforeNodeClick.x,
+      afterNodeClick!.y - beforeNodeClick.y,
+    ),
+  ).toBeGreaterThan(80);
+
+  const radarPanel = await page.locator(".career-radar-panel").boundingBox();
+  const radarChart = await page
+    .locator(".capability-radar__visual svg")
+    .boundingBox();
+  const radarAxes = await page
+    .locator(".capability-radar__axes")
+    .boundingBox();
+  expect(radarPanel).not.toBeNull();
+  expect(radarChart).not.toBeNull();
+  expect(radarAxes).not.toBeNull();
+  expect(radarAxes!.x).toBeGreaterThanOrEqual(radarPanel!.x);
+  expect(radarAxes!.x + radarAxes!.width).toBeLessThanOrEqual(
+    radarPanel!.x + radarPanel!.width,
+  );
+  expect(radarAxes!.y).toBeGreaterThanOrEqual(
+    radarChart!.y + radarChart!.height - 2,
+  );
+});
+
+test("项目区由向下滚动逐卡切换并在末卡后自然释放页面", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await page.locator("#projects").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(420);
+  await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>(".projects-stage");
+    if (!stage) {
+      throw new Error("projects stage missing");
+    }
+    const pinSpacer =
+      stage.parentElement?.classList.contains("pin-spacer")
+        ? stage.parentElement
+        : stage;
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(
+      0,
+      pinSpacer.getBoundingClientRect().top + window.scrollY - 84,
+    );
+  });
+  await page.waitForTimeout(120);
+  await page.waitForTimeout(320);
+
+  const solutionTitle = page.locator(".project-solution h3");
+  await expect(solutionTitle).toHaveText(
+    "机构业务商业判断与产品落地",
+  );
+
+  const stageBox = await page.locator(".projects-stage").boundingBox();
+  expect(stageBox).not.toBeNull();
+  await page.mouse.move(
+    stageBox!.x + stageBox!.width / 2,
+    stageBox!.y + stageBox!.height / 2,
+  );
+
+  await page.mouse.wheel(0, 620);
+  await expect(solutionTitle).toHaveText("资产资金标准化");
+  await page.mouse.wheel(0, 620);
+  await expect(solutionTitle).toHaveText("自营 H5 信贷产品落地");
+  await page.mouse.wheel(0, 620);
+  await expect(solutionTitle).toHaveText("AI 知识资产化与 FDE 实践");
+
+  await page.mouse.wheel(0, 620);
+  await page.waitForTimeout(320);
+  const releasedStage = await page.locator(".projects-stage").boundingBox();
+  expect(releasedStage).not.toBeNull();
+  expect(releasedStage!.y).toBeLessThan(0);
+});

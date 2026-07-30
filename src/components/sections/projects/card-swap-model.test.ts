@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   cardSwapReducer,
   createCardSwapState,
+  getCardIndexForScroll,
+  getCardScrollProgress,
 } from "./card-swap-model";
 
 describe("cardSwapReducer", () => {
@@ -46,5 +48,18 @@ describe("cardSwapReducer", () => {
       expect(state.count).toBe(count);
       expect(state.activeIndex).toBeLessThan(count);
     }
+  });
+
+  it("maps pinned scroll to each card and lets the last card reach the exit", () => {
+    expect(getCardIndexForScroll(0, 4)).toBe(0);
+    expect(getCardIndexForScroll(0.24, 4)).toBe(0);
+    expect(getCardIndexForScroll(0.25, 4)).toBe(1);
+    expect(getCardIndexForScroll(0.74, 4)).toBe(2);
+    expect(getCardIndexForScroll(0.75, 4)).toBe(3);
+    expect(getCardIndexForScroll(1, 4)).toBe(3);
+
+    expect(getCardScrollProgress(0, 4)).toBe(0);
+    expect(getCardScrollProgress(2, 4)).toBeCloseTo(2 / 3);
+    expect(getCardScrollProgress(3, 4)).toBe(1);
   });
 });

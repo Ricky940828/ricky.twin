@@ -9,6 +9,10 @@ import {
   gsap,
   ScrollTrigger,
 } from "@/lib/gsap-client";
+import {
+  CAREER_PROGRESS_EVENT,
+  type CareerProgressDetail,
+} from "@/lib/career-progress";
 
 import {
   CharacterVideo,
@@ -66,6 +70,9 @@ export function PersistentCharacter() {
 
       ensureGsapPlugins();
       let loungeExpanded = false;
+      let careerProgress = Number(
+        document.documentElement.dataset.careerProgress ?? 0,
+      );
 
       const sceneTarget = (nextScene: NarrativeScene) => {
         const viewportWidth = window.innerWidth;
@@ -195,10 +202,11 @@ export function PersistentCharacter() {
           bounds.left +
           (point.x / ROUTE_VIEWBOX.width) * bounds.width -
           STAGE.width * scale * 0.5;
-        const y =
+        const routeY =
           bounds.top +
           (point.y / ROUTE_VIEWBOX.height) * bounds.height -
           STAGE.height * scale * 0.78;
+        const y = Math.max(64, routeY);
 
         moveCharacter(
           {
@@ -235,8 +243,7 @@ export function PersistentCharacter() {
         }
 
         if (nextScene === "career") {
-          const careerTrigger = ScrollTrigger.getById("career-route-pin");
-          updateCareerRoute(careerTrigger?.progress ?? 0);
+          updateCareerRoute(careerProgress);
           return;
         }
 
@@ -350,10 +357,23 @@ export function PersistentCharacter() {
         rotate(0);
       };
       const handleResize = () => resolveScene(true);
+      const handleCareerProgress = (event: Event) => {
+        careerProgress = clamp(
+          (event as CustomEvent<CareerProgressDetail>).detail?.progress ??
+            0,
+        );
+        if (sceneRef.current === "career") {
+          updateCareerRoute(careerProgress);
+        }
+      };
 
       window.addEventListener("scroll", scheduleResolve, { passive: true });
       window.addEventListener("resize", handleResize, { passive: true });
       window.addEventListener("hashchange", scheduleResolve);
+      window.addEventListener(
+        CAREER_PROGRESS_EVENT,
+        handleCareerProgress,
+      );
       window.addEventListener("pointermove", handlePointerMove, {
         passive: true,
       });
@@ -375,6 +395,10 @@ export function PersistentCharacter() {
         window.removeEventListener("scroll", scheduleResolve);
         window.removeEventListener("resize", handleResize);
         window.removeEventListener("hashchange", scheduleResolve);
+        window.removeEventListener(
+          CAREER_PROGRESS_EVENT,
+          handleCareerProgress,
+        );
         window.removeEventListener("pointermove", handlePointerMove);
         document.documentElement.removeEventListener(
           "pointerleave",

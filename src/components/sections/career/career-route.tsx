@@ -2,9 +2,13 @@
 
 import { useGSAP } from "@gsap/react";
 import { ArrowRight } from "lucide-react";
-import { useCallback, useRef, type RefObject } from "react";
+import { useCallback, useRef } from "react";
 
 import type { CareerStage } from "@/content/types";
+import {
+  CAREER_PROGRESS_EVENT,
+  type CareerProgressDetail,
+} from "@/lib/career-progress";
 import {
   ensureGsapPlugins,
   gsap,
@@ -18,14 +22,13 @@ interface CareerRouteProps {
   activeIndex: number;
   onStageChange: (index: number) => void;
   onNavigateProjects: () => void;
-  pinScopeRef: RefObject<HTMLDivElement | null>;
 }
 
 const NODE_POSITIONS = [
-  { x: 68, y: 268 },
-  { x: 270, y: 118 },
-  { x: 484, y: 250 },
-  { x: 688, y: 92 },
+  { x: 68, y: 245 },
+  { x: 270, y: 155 },
+  { x: 484, y: 235 },
+  { x: 688, y: 145 },
 ];
 
 export function CareerRoute({
@@ -33,7 +36,6 @@ export function CareerRoute({
   activeIndex,
   onStageChange,
   onNavigateProjects,
-  pinScopeRef,
 }: CareerRouteProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
@@ -49,6 +51,13 @@ export function CareerRoute({
     }
 
     const bounded = Math.min(1, Math.max(0, progress));
+    document.documentElement.dataset.careerProgress = String(bounded);
+    window.dispatchEvent(
+      new CustomEvent<CareerProgressDetail>(CAREER_PROGRESS_EVENT, {
+        detail: { progress: bounded },
+      }),
+    );
+
     const hasGeometry =
       typeof path.getTotalLength === "function" &&
       typeof path.getPointAtLength === "function";
@@ -62,24 +71,20 @@ export function CareerRoute({
   useGSAP(
     () => {
       ensureGsapPlugins();
-      setPathProgress(activeIndex / Math.max(1, stages.length - 1));
-    },
-    {
-      dependencies: [activeIndex, setPathProgress, stages.length],
-    },
-  );
-
-  useGSAP(
-    () => {
-      ensureGsapPlugins();
-      const scope = pinScopeRef.current;
+      const scope =
+        mapRef.current?.closest<HTMLElement>(".career-experience") ??
+        null;
       const hasDesktopMedia =
         typeof window.matchMedia === "function" &&
         window.matchMedia("(min-width: 901px)").matches;
       if (!scope || !hasDesktopMedia) {
+        setPathProgress(
+          activeIndex / Math.max(1, stages.length - 1),
+        );
         return;
       }
 
+      setPathProgress(0);
       const trigger = ScrollTrigger.create({
         id: "career-route-pin",
         trigger: scope,
@@ -91,6 +96,9 @@ export function CareerRoute({
         onUpdate: (self) => {
           setPathProgress(self.progress);
           onStageChange(getStageIndex(self.progress, stages.length));
+        },
+        onRefresh: (self) => {
+          setPathProgress(self.progress);
         },
       });
       scrollTriggerRef.current = trigger;
@@ -118,6 +126,8 @@ export function CareerRoute({
         window.removeEventListener("wheel", cancelGuidance);
         window.removeEventListener("touchstart", cancelGuidance);
         window.removeEventListener("keydown", cancelOnKeyboard);
+        trigger.kill();
+        guideTweenRef.current?.kill();
         scrollTriggerRef.current = null;
       };
     },
@@ -128,32 +138,46 @@ export function CareerRoute({
 
   const guideToStage = (nextIndex: number) => {
     const boundedIndex = Math.min(stages.length - 1, Math.max(0, nextIndex));
-    const from = activeIndex / Math.max(1, stages.length - 1);
     const to = boundedIndex / Math.max(1, stages.length - 1);
-    const progress = { value: from };
-
     guideTweenRef.current?.kill();
-    guideTweenRef.current = gsap.to(progress, {
-      value: to,
-      duration: 0.9,
-      ease: "power2.inOut",
-      onUpdate: () => setPathProgress(progress.value),
-      onComplete: () => {
-        guideTweenRef.current = null;
-      },
-    });
-    onStageChange(boundedIndex);
 
     const trigger = scrollTriggerRef.current;
     if (trigger) {
       const targetScroll =
         trigger.start + (trigger.end - trigger.start) * to;
-      window.scrollTo({ top: targetScroll, behavior: "smooth" });
-    } else if (typeof mapRef.current?.scrollIntoView === "function") {
-      mapRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
+      const scrollState = { value: window.scrollY };
+      guideTweenRef.current = gsap.to(scrollState, {
+        value: targetScroll,
+        duration: 1.05,
+        ease: "power2.inOut",
+        overwrite: true,
+        onUpdate: () => {
+          window.scrollTo(0, scrollState.value);
+        },
+        onComplete: () => {
+          window.scrollTo(0, targetScroll);
+          guideTweenRef.current = null;
+        },
       });
+    } else {
+      const from = activeIndex / Math.max(1, stages.length - 1);
+      const progress = { value: from };
+      guideTweenRef.current = gsap.to(progress, {
+        value: to,
+        duration: 0.9,
+        ease: "power2.inOut",
+        onUpdate: () => setPathProgress(progress.value),
+        onComplete: () => {
+          guideTweenRef.current = null;
+        },
+      });
+      onStageChange(boundedIndex);
+      if (typeof mapRef.current?.scrollIntoView === "function") {
+        mapRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
     }
   };
 
@@ -171,12 +195,12 @@ export function CareerRoute({
           <path
             ref={pathRef}
             data-career-path="true"
-            d="M68 268 C150 286 190 110 270 118 C350 126 390 274 484 250 C570 228 608 82 688 92"
+            d="M68 245 C150 258 192 150 270 155 C350 160 400 250 484 235 C570 220 610 140 688 145"
           />
           <path
             ref={progressPathRef}
             className="career-route__path-progress"
-            d="M68 268 C150 286 190 110 270 118 C350 126 390 274 484 250 C570 228 608 82 688 92"
+            d="M68 245 C150 258 192 150 270 155 C350 160 400 250 484 235 C570 220 610 140 688 145"
           />
         </svg>
 

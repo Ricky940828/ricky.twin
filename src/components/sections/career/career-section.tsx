@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import type { CareerStage } from "@/content/types";
 
@@ -19,7 +19,6 @@ export function CareerSection({
   onNavigateProjects,
 }: CareerSectionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const pinScopeRef = useRef<HTMLDivElement>(null);
   const currentStage = stages[activeIndex];
   const previousStage = activeIndex > 0 ? stages[activeIndex - 1] : undefined;
 
@@ -47,12 +46,11 @@ export function CareerSection({
         </p>
       </div>
 
-      <div ref={pinScopeRef} className="career-experience">
+      <div className="career-experience">
         <CareerRoute
           activeIndex={activeIndex}
           onNavigateProjects={navigateToProjects}
           onStageChange={setActiveIndex}
-          pinScopeRef={pinScopeRef}
           stages={stages}
         />
         <aside className="career-radar-panel glass-panel">
