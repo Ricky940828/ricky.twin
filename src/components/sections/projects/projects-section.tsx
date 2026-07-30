@@ -3,9 +3,7 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useMemo, useReducer, useState } from "react";
 
-import { CharacterVideo } from "@/components/character/character-video";
 import type { ProjectTheme } from "@/content/types";
-import { useIntersectionActive } from "@/hooks/use-intersection-active";
 
 import { CardSwap } from "./card-swap";
 import {
@@ -32,9 +30,6 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
     createCardSwapState,
   );
   const [openProject, setOpenProject] = useState<ProjectTheme | null>(null);
-  const { ref, active } = useIntersectionActive<HTMLElement>({
-    threshold: 0.12,
-  });
 
   if (visibleProjects.length === 0) {
     return null;
@@ -47,7 +42,7 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
   const currentProject = visibleProjects[activeIndex];
 
   return (
-    <section ref={ref} className="projects-section site-section" id="projects">
+    <section className="projects-section site-section" id="projects">
       <div className="projects-section__intro">
         <span className="eyebrow">SELECTED WORK · PROBLEM SOLVING</span>
         <h2 className="section-title">项目不是清单，而是能力如何解决问题。</h2>
@@ -70,9 +65,6 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
             onOpen={setOpenProject}
             projects={visibleProjects}
           />
-          <div aria-hidden="true" className="projects-stage__character">
-            <CharacterVideo active={active} scene="projects" />
-          </div>
           <div className="projects-stage__controls">
             <button
               aria-label="上一个项目"

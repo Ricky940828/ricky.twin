@@ -39,6 +39,10 @@ export interface ContentPreviewMessage {
   replayKey: number;
 }
 
+export interface ContentPreviewReadyMessage {
+  type: "ricky:content-preview-ready";
+}
+
 export function LivePreview({
   canPublish,
   content,
@@ -74,6 +78,26 @@ export function LivePreview({
 
   useEffect(() => {
     postDraft();
+  }, [postDraft]);
+
+  useEffect(() => {
+    const receivePreviewReady = (event: MessageEvent<unknown>) => {
+      if (
+        event.origin !== window.location.origin ||
+        event.source !== frameRef.current?.contentWindow ||
+        typeof event.data !== "object" ||
+        event.data === null ||
+        (event.data as ContentPreviewReadyMessage).type !==
+          "ricky:content-preview-ready"
+      ) {
+        return;
+      }
+      postDraft();
+    };
+
+    window.addEventListener("message", receivePreviewReady);
+    return () =>
+      window.removeEventListener("message", receivePreviewReady);
   }, [postDraft]);
 
   useEffect(() => {

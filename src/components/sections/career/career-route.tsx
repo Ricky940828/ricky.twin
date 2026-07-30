@@ -4,7 +4,6 @@ import { useGSAP } from "@gsap/react";
 import { ArrowRight } from "lucide-react";
 import { useCallback, useRef, type RefObject } from "react";
 
-import { CharacterVideo } from "@/components/character/character-video";
 import type { CareerStage } from "@/content/types";
 import {
   ensureGsapPlugins,
@@ -19,7 +18,6 @@ interface CareerRouteProps {
   activeIndex: number;
   onStageChange: (index: number) => void;
   onNavigateProjects: () => void;
-  mediaActive: boolean;
   pinScopeRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -35,22 +33,18 @@ export function CareerRoute({
   activeIndex,
   onStageChange,
   onNavigateProjects,
-  mediaActive,
   pinScopeRef,
 }: CareerRouteProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const progressPathRef = useRef<SVGPathElement>(null);
-  const avatarRef = useRef<HTMLDivElement>(null);
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const guideTweenRef = useRef<gsap.core.Tween | null>(null);
 
   const setPathProgress = useCallback((progress: number) => {
     const path = pathRef.current;
     const progressPath = progressPathRef.current;
-    const avatar = avatarRef.current;
-    const map = mapRef.current;
-    if (!path || !progressPath || !avatar || !map) {
+    if (!path || !progressPath) {
       return;
     }
 
@@ -58,36 +52,11 @@ export function CareerRoute({
     const hasGeometry =
       typeof path.getTotalLength === "function" &&
       typeof path.getPointAtLength === "function";
-    const mapBounds = map.getBoundingClientRect();
-    const scaleX = mapBounds.width / 760 || 1;
-    const scaleY = mapBounds.height / 360 || 1;
-
-    let point: { x: number; y: number };
     if (hasGeometry) {
       const length = path.getTotalLength();
       progressPath.style.strokeDasharray = String(length);
       progressPath.style.strokeDashoffset = String(length * (1 - bounded));
-      point = path.getPointAtLength(length * bounded);
-    } else {
-      const scaled = bounded * (NODE_POSITIONS.length - 1);
-      const fromIndex = Math.floor(scaled);
-      const toIndex = Math.min(NODE_POSITIONS.length - 1, fromIndex + 1);
-      const local = scaled - fromIndex;
-      point = {
-        x:
-          NODE_POSITIONS[fromIndex].x +
-          (NODE_POSITIONS[toIndex].x - NODE_POSITIONS[fromIndex].x) * local,
-        y:
-          NODE_POSITIONS[fromIndex].y +
-          (NODE_POSITIONS[toIndex].y - NODE_POSITIONS[fromIndex].y) * local,
-      };
     }
-
-    gsap.set(avatar, {
-      x: point.x * scaleX - 55,
-      y: point.y * scaleY - 116,
-      force3D: true,
-    });
   }, []);
 
   useGSAP(
@@ -112,6 +81,7 @@ export function CareerRoute({
       }
 
       const trigger = ScrollTrigger.create({
+        id: "career-route-pin",
         trigger: scope,
         start: "top top+=84",
         end: () => `+=${Math.round(window.innerHeight * 2.7)}`,
@@ -200,6 +170,7 @@ export function CareerRoute({
         >
           <path
             ref={pathRef}
+            data-career-path="true"
             d="M68 268 C150 286 190 110 270 118 C350 126 390 274 484 250 C570 228 608 82 688 92"
           />
           <path
@@ -208,10 +179,6 @@ export function CareerRoute({
             d="M68 268 C150 286 190 110 270 118 C350 126 390 274 484 250 C570 228 608 82 688 92"
           />
         </svg>
-
-        <div ref={avatarRef} aria-hidden="true" className="career-route__avatar">
-          <CharacterVideo active={mediaActive} scene="career" />
-        </div>
 
         {stages.map((item, index) => (
           <button

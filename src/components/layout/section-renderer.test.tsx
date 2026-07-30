@@ -27,6 +27,19 @@ function configuredSite(): SiteContent {
 }
 
 describe("SectionRenderer", () => {
+  it("renders one persistent character stage instead of section-local copies", () => {
+    render(<SectionRenderer site={siteContent} />);
+
+    expect(screen.getByTestId("persistent-character")).toBeInTheDocument();
+    expect(document.querySelectorAll(".persistent-character")).toHaveLength(1);
+    expect(document.querySelector(".hero-character-stage")).toBeNull();
+    expect(document.querySelector(".career-route__avatar")).toBeNull();
+    expect(document.querySelector(".projects-stage__character")).toBeNull();
+    expect(
+      document.querySelector(".lounge-avatar-panel__character"),
+    ).toBeNull();
+  });
+
   it("renders only enabled sections in configured order and mirrors it in navigation", () => {
     render(<SectionRenderer site={configuredSite()} />);
 

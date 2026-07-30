@@ -1,5 +1,47 @@
 import { expect, test } from "@playwright/test";
 
+test("桌面首屏保持一屏比例且人物随叙事场景连续切换", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const character = page.getByTestId("persistent-character");
+  await expect(character).toBeVisible();
+  await expect(character).toHaveAttribute("data-scene", "hero");
+
+  const heroMetrics = await page.evaluate(() => {
+    const hero = document.querySelector<HTMLElement>(".hero-section");
+    const stage = document.querySelector<HTMLElement>(
+      '[data-testid="persistent-character"]',
+    );
+    const dock = document.querySelector<HTMLElement>(".practice-dock");
+    const heroRect = hero?.getBoundingClientRect();
+    const stageRect = stage?.getBoundingClientRect();
+    const dockRect = dock?.getBoundingClientRect();
+    return {
+      heroHeight: heroRect?.height ?? 0,
+      characterHeight: stageRect?.height ?? 0,
+      dockBottom: dockRect?.bottom ?? Number.POSITIVE_INFINITY,
+    };
+  });
+
+  expect(heroMetrics.heroHeight).toBeLessThanOrEqual(920);
+  expect(heroMetrics.characterHeight).toBeGreaterThanOrEqual(540);
+  expect(heroMetrics.characterHeight).toBeLessThanOrEqual(680);
+  expect(heroMetrics.dockBottom).toBeLessThanOrEqual(900);
+
+  await page.locator("#career").scrollIntoViewIfNeeded();
+  await expect(character).toHaveAttribute("data-scene", "career");
+  await expect(
+    character.locator('[data-scene-layer="career"]'),
+  ).toHaveAttribute("data-active", "true");
+
+  await page.locator("#projects").scrollIntoViewIfNeeded();
+  await expect(character).toHaveAttribute("data-scene", "projects");
+
+  await page.locator("#lounge").scrollIntoViewIfNeeded();
+  await expect(character).toHaveAttribute("data-scene", "lounge");
+});
+
 test("访客可以从首页沿职业路线进入项目并在会客厅提问", async ({
   page,
 }) => {

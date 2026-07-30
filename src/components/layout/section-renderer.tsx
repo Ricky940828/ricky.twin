@@ -12,6 +12,7 @@ import {
 
 import { DotField } from "@/components/background/dot-field";
 import { VisitTracker } from "@/components/analytics/visit-tracker";
+import { PersistentCharacter } from "@/components/character/persistent-character";
 import { CareerSection } from "@/components/sections/career/career-section";
 import { HeroSection } from "@/components/sections/hero-section";
 import { LoungeSection } from "@/components/sections/lounge/lounge-section";
@@ -202,6 +203,7 @@ export function SectionRenderer({
     >
       <VisitTracker enabled={mode === "published"} />
       <DotField />
+      <PersistentCharacter />
       <SiteHeader
         activeSection={activeSection}
         brand={site.brand}

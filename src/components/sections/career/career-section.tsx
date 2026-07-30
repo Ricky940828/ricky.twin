@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 
 import type { CareerStage } from "@/content/types";
-import { useIntersectionActive } from "@/hooks/use-intersection-active";
 
 import { CapabilityRadar } from "./capability-radar";
 import { CareerRoute } from "./career-route";
@@ -21,9 +20,6 @@ export function CareerSection({
 }: CareerSectionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const pinScopeRef = useRef<HTMLDivElement>(null);
-  const { ref, active } = useIntersectionActive<HTMLElement>({
-    threshold: 0.12,
-  });
   const currentStage = stages[activeIndex];
   const previousStage = activeIndex > 0 ? stages[activeIndex - 1] : undefined;
 
@@ -42,7 +38,7 @@ export function CareerSection({
   }
 
   return (
-    <section ref={ref} className="career-section site-section" id="career">
+    <section className="career-section site-section" id="career">
       <div className="career-section__intro">
         <span className="eyebrow">CAREER ROUTE · CAPABILITY GROWTH</span>
         <h2 className="section-title">能力不是并列堆出来的，而是一路复合生长。</h2>
@@ -54,7 +50,6 @@ export function CareerSection({
       <div ref={pinScopeRef} className="career-experience">
         <CareerRoute
           activeIndex={activeIndex}
-          mediaActive={active}
           onNavigateProjects={navigateToProjects}
           onStageChange={setActiveIndex}
           pinScopeRef={pinScopeRef}

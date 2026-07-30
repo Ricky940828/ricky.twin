@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-import type { ContentPreviewMessage } from "@/components/admin/live-preview";
+import type {
+  ContentPreviewMessage,
+  ContentPreviewReadyMessage,
+} from "@/components/admin/live-preview";
 import { SectionRenderer } from "@/components/layout/section-renderer";
 import type { SiteContent } from "@/content/types";
 import type { AdminContentResponse } from "@/server/content/content-service";
@@ -37,6 +40,7 @@ export function PreviewClient() {
 
   useEffect(() => {
     let active = true;
+    let receivedLiveDraft = false;
 
     const loadSavedDraft = async () => {
       try {
@@ -53,13 +57,13 @@ export function PreviewClient() {
           return;
         }
         const result = (await response.json()) as AdminContentResponse;
-        if (active && result.ok) {
+        if (active && result.ok && !receivedLiveDraft) {
           setPreview({
             status: "ready",
             content: result.workspace.draft,
             replayKey: 0,
           });
-        } else if (active) {
+        } else if (active && !result.ok && !receivedLiveDraft) {
           setPreview({
             status: "error",
             message: "草稿暂时无法读取。",
@@ -89,6 +93,7 @@ export function PreviewClient() {
       if (!validation.ok) {
         return;
       }
+      receivedLiveDraft = true;
       setPreview({
         status: "ready",
         content: validation.value,
@@ -97,6 +102,10 @@ export function PreviewClient() {
     };
 
     window.addEventListener("message", receiveDraft);
+    const readyMessage: ContentPreviewReadyMessage = {
+      type: "ricky:content-preview-ready",
+    };
+    window.parent.postMessage(readyMessage, window.location.origin);
     void loadSavedDraft();
 
     return () => {

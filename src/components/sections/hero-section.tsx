@@ -9,11 +9,8 @@ import {
   Route,
   Sparkles,
 } from "lucide-react";
-import { useState, type ComponentType } from "react";
+import { type ComponentType } from "react";
 
-import { CharacterVideo } from "@/components/character/character-video";
-import { IdentityCardDialog } from "@/components/character/identity-card-dialog";
-import { LanyardBadge } from "@/components/character/lanyard-badge";
 import { PressureTitle } from "@/components/motion/pressure-title";
 import { TargetLock } from "@/components/motion/target-lock";
 import type {
@@ -21,7 +18,6 @@ import type {
   PracticeLink,
   SiteSectionId,
 } from "@/content/types";
-import { useIntersectionActive } from "@/hooks/use-intersection-active";
 
 interface HeroSectionProps {
   content: HeroContent;
@@ -93,18 +89,13 @@ export function HeroSection({
   practiceLinks,
   onNavigate,
 }: HeroSectionProps) {
-  const [identityOpen, setIdentityOpen] = useState(false);
-  const { ref, active } = useIntersectionActive<HTMLElement>({
-    defaultActive: true,
-    threshold: 0.18,
-  });
   const featuredPractice = [...practiceLinks]
     .filter((item) => item.visible && item.featured)
     .sort((a, b) => a.order - b.order)
     .slice(0, 5);
 
   return (
-    <section ref={ref} className="hero-section site-section" id="hero">
+    <section className="hero-section site-section" id="hero">
       <div className="hero-grid">
         <div className="hero-copy">
           <span className="eyebrow">{content.eyebrow}</span>
@@ -158,11 +149,6 @@ export function HeroSection({
 
         <div className="hero-visual">
           <div aria-hidden="true" className="hero-character-glow" />
-          <div className="hero-character-stage">
-            <CharacterVideo active={active} priority scene="hero" />
-            <LanyardBadge onOpenIdentity={() => setIdentityOpen(true)} />
-          </div>
-          <span className="hero-character-note">可拖动工牌 · 轻点查看身份卡</span>
 
           <div aria-label="实践项目快捷入口" className="practice-dock">
             <div className="practice-dock__heading">
@@ -182,11 +168,6 @@ export function HeroSection({
         <span />
         SCROLL TO WALK THE CAREER ROUTE
       </div>
-
-      <IdentityCardDialog
-        onClose={() => setIdentityOpen(false)}
-        open={identityOpen}
-      />
     </section>
   );
 }

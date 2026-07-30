@@ -18,7 +18,6 @@ import {
   type FormEvent,
 } from "react";
 
-import { CharacterVideo } from "@/components/character/character-video";
 import { MagicRings } from "@/components/motion/magic-rings";
 import type { KnowledgeBadge, LoungeContent } from "@/content/types";
 import { useIntersectionActive } from "@/hooks/use-intersection-active";
@@ -445,9 +444,6 @@ export function LoungeSection({ content }: LoungeSectionProps) {
             pulseKey={state.pulseKey}
             reducedMotion={reducedMotion}
           />
-          <div className="lounge-avatar-panel__character">
-            <CharacterVideo active={active} scene="lounge" />
-          </div>
           <div className="lounge-avatar-panel__caption">
             <span>RICKY.TWIN / RECEPTION</span>
             <strong>可以从一个真实问题开始。</strong>
