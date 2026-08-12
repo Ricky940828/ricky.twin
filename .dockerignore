@@ -1,0 +1,14 @@
+.git
+.github
+.next
+.ricky-twin-data
+.env
+.env.*
+!.env.example
+node_modules
+test-results
+playwright-report
+coverage
+docs
+tests
+*.log

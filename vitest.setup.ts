@@ -7,7 +7,7 @@ afterEach(() => {
   cleanup();
 });
 
-if (typeof window.matchMedia !== "function") {
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     value: (query: string) => ({
@@ -23,17 +23,21 @@ if (typeof window.matchMedia !== "function") {
   });
 }
 
-Object.defineProperty(HTMLMediaElement.prototype, "play", {
-  configurable: true,
-  value: () => Promise.resolve(),
-});
+if (typeof HTMLMediaElement !== "undefined") {
+  Object.defineProperty(HTMLMediaElement.prototype, "play", {
+    configurable: true,
+    value: () => Promise.resolve(),
+  });
 
-Object.defineProperty(HTMLMediaElement.prototype, "pause", {
-  configurable: true,
-  value: () => undefined,
-});
+  Object.defineProperty(HTMLMediaElement.prototype, "pause", {
+    configurable: true,
+    value: () => undefined,
+  });
+}
 
-Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
-  configurable: true,
-  value: () => null,
-});
+if (typeof HTMLCanvasElement !== "undefined") {
+  Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+    configurable: true,
+    value: () => null,
+  });
+}

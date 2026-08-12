@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle2, History, RefreshCw, Rocket, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import type { UpdateSystemStatus } from "@/server/update/update-types";
+import { ACTIVE_UPDATE_PHASES, type UpdateSystemStatus } from "@/server/update/update-types";
 
 interface UpdateResponse {
   ok: boolean;
@@ -44,7 +44,16 @@ export function SystemUpdateManager() {
   }, []);
 
   useEffect(() => {
-    void request("/api/admin/system/update").catch((reason) => setError(reason instanceof Error ? reason.message : "系统更新状态读取失败"));
+    const timer = window.setTimeout(() => {
+      void request("/api/admin/system/update").catch((reason) =>
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "系统更新状态读取失败",
+        ),
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [request]);
 
   useEffect(() => {
@@ -80,7 +89,13 @@ export function SystemUpdateManager() {
     return <section className="admin-update"><div className="admin-loading"><p>{error || "正在读取系统版本…"}</p></div></section>;
   }
 
-  const canApply = status.updateAvailable && status.compatible && status.updaterEnabled && !status.job;
+  const hasActiveJob = Boolean(status.job && ACTIVE_UPDATE_PHASES.has(status.job.phase));
+  const canApply = status.updateAvailable && status.compatible && status.updaterEnabled && !hasActiveJob;
+  const releaseTitle = !status.latestManifest
+    ? "尚未检查更新"
+    : status.updateAvailable
+      ? `发现新版本 ${status.latestManifest.version}`
+      : "当前已经是最新版本";
   return (
     <section className="admin-update">
       {error ? <div className="admin-form-error" role="alert">{error}</div> : null}
@@ -91,7 +106,7 @@ export function SystemUpdateManager() {
 
       <div className="admin-update__grid">
         <article className="admin-update__card">
-          <div className="admin-update__card-title"><Rocket size={18} aria-hidden /><div><small>LATEST RELEASE</small><h3>{status.updateAvailable && status.latestManifest ? `发现新版本 ${status.latestManifest.version}` : "当前已经是最新版本"}</h3></div></div>
+          <div className="admin-update__card-title"><Rocket size={18} aria-hidden /><div><small>LATEST RELEASE</small><h3>{releaseTitle}</h3></div></div>
           <p className={status.compatible ? "is-safe" : "is-warning"}>{status.compatible ? <ShieldCheck size={16} aria-hidden /> : <AlertTriangle size={16} aria-hidden />}{status.compatibilityMessage}</p>
           {status.latestManifest?.notes.length ? <ul>{status.latestManifest.notes.map((note) => <li key={note}>{note}</li>)}</ul> : <p>检查更新后将在此显示版本说明。</p>}
           <small>上次检测：{formatTime(status.lastCheckedAt)}</small>
@@ -106,12 +121,11 @@ export function SystemUpdateManager() {
       {status.job ? <div className={`admin-update__progress is-${status.job.phase}`} role="status"><RefreshCw size={18} aria-hidden /><div><strong>{phaseLabels[status.job.phase] || status.job.phase}</strong><p>{status.job.message}</p></div></div> : null}
 
       <div className="admin-update__actions">
-        <button className="admin-button" disabled={busy !== null || Boolean(status.job)} onClick={() => void run("check")} type="button"><RefreshCw size={16} aria-hidden />{busy === "check" ? "正在检测" : "检查更新"}</button>
+        <button className="admin-button" disabled={busy !== null || hasActiveJob} onClick={() => void run("check")} type="button"><RefreshCw size={16} aria-hidden />{busy === "check" ? "正在检测" : "检查更新"}</button>
         <button className="admin-button is-primary" disabled={!canApply || busy !== null} onClick={() => void run("apply")} type="button"><Rocket size={16} aria-hidden />一键更新并重启</button>
-        <button className="admin-button" disabled={!status.lastBackupId || busy !== null || Boolean(status.job)} onClick={() => void run("rollback")} type="button"><History size={16} aria-hidden />回滚上一版本</button>
+        <button className="admin-button" disabled={!status.lastBackupId || busy !== null || hasActiveJob} onClick={() => void run("rollback")} type="button"><History size={16} aria-hidden />回滚上一版本</button>
       </div>
       <div className="admin-update__updater"><CheckCircle2 size={15} aria-hidden /><span>{status.updaterEnabled ? `宿主更新器 ${status.updaterVersion} 已连接` : "宿主更新器未启用；当前只能查看版本"}</span></div>
     </section>
   );
 }
-

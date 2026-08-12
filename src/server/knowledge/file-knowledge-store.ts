@@ -9,6 +9,8 @@ import {
 } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 
+import { initializeApplicationDataRoot } from "@/server/data/data-schema";
+
 import { chunkMarkdown } from "./markdown-chunker";
 import {
   KnowledgeStoreError,
@@ -171,6 +173,7 @@ export function createFileKnowledgeStore(
   };
 
   const readOrSeed = async () => {
+    await initializeApplicationDataRoot(dataDir);
     await ensureDirectories();
     try {
       const parsed = parseWorkspace(

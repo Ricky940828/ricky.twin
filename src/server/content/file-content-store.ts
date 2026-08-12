@@ -7,6 +7,7 @@ import {
 import { join } from "node:path";
 
 import { siteContent } from "@/content/site-content";
+import { initializeApplicationDataRoot } from "@/server/data/data-schema";
 
 import {
   ContentValidationError,
@@ -179,6 +180,7 @@ export function createFileContentStore(
   };
 
   const readOrSeed = async () => {
+    await initializeApplicationDataRoot(dataDir);
     await ensureDirectories();
     try {
       const raw = await readFile(workspacePath, "utf8");

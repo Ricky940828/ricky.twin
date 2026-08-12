@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "version": "0.2.0",
+  "releaseTag": "v0.2.0",
+  "image": "ghcr.io/ricky940828/ricky.twin@sha256:REPLACE_WITH_64_CHARACTER_DIGEST",
+  "publishedAt": "2026-08-12T00:00:00Z",
+  "minimumDataSchemaVersion": 1,
+  "maximumDataSchemaVersion": 1,
+  "requiredUpdaterVersion": "1.0.0",
+  "notes": [
+    "管理端集中展示当前版本与更新状态",
+    "支持检查更新、一键更新并重启和失败自动回滚",
+    "升级时保留知识库、前台内容、Agent、模型配置和运行记录"
+  ]
+}

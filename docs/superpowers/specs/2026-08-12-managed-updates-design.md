@@ -82,8 +82,8 @@ GitHub Actions 在推送 `v*` 标签后执行测试和构建，将镜像推送�
 
 ```text
 requested
-  → backing_up
   → pulling
+  → backing_up
   → validating
   → migrating
   → restarting
@@ -135,4 +135,3 @@ rolling_back → rolled_back
 6. 升级前后的知识库 Markdown、前台草稿/正式版本、Agent/模型设置和运行记录校验和一致；仅显式迁移字段允许变化。
 7. 损坏工作区在生产模式下不得被初始数据覆盖。
 8. 全量单元测试、类型检查、Lint、生产构建和关键管理端端到端测试通过。
-

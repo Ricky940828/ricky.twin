@@ -7,5 +7,7 @@ test-results
 .DS_Store
 .serena
 .ricky-twin-data
+.ricky-twin-backups
+update-manifest.json
 .env*
 !.env.example

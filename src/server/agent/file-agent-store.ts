@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { initializeApplicationDataRoot } from "@/server/data/data-schema";
+
 import {
   AgentStoreError,
   type AgentStore,
@@ -454,6 +456,7 @@ export function createFileAgentStore(
   };
 
   const readOrSeed = async () => {
+    await initializeApplicationDataRoot(dataDir);
     await mkdir(agentDir, { recursive: true });
     try {
       const workspace = parseWorkspace(

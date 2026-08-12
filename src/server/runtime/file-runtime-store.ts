@@ -6,6 +6,7 @@ import {
   decryptSecret,
   encryptSecret,
 } from "@/server/agent/secret-box";
+import { initializeApplicationDataRoot } from "@/server/data/data-schema";
 
 import {
   RuntimeStoreError,
@@ -145,6 +146,7 @@ export function createFileRuntimeStore(
   };
 
   const readOrSeed = async () => {
+    await initializeApplicationDataRoot(dataDir);
     await mkdir(runtimeDir, { recursive: true });
     try {
       const parsed = parseWorkspace(

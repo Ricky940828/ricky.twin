@@ -1,0 +1,15 @@
+[Unit]
+Description=Apply a validated Ricky Twin update
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ricky-twin/deploy/ricky-updater.sh
+Nice=10
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/ricky-twin
+TimeoutStartSec=30min

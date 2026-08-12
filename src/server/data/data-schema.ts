@@ -14,6 +14,8 @@ interface DataSchemaOptions {
   now?: () => Date;
 }
 
+const initializations = new Map<string, Promise<DataSchemaMeta>>();
+
 function parseMeta(value: unknown): DataSchemaMeta {
   if (
     typeof value !== "object" ||
@@ -80,3 +82,20 @@ export async function ensureCompatibleDataRoot(
   return meta;
 }
 
+export function initializeApplicationDataRoot(
+  dataDir =
+    process.env.RICKY_CONTENT_DATA_DIR ??
+    join(process.cwd(), ".ricky-twin-data"),
+  appVersion =
+    process.env.RICKY_APP_VERSION ??
+    process.env.npm_package_version ??
+    "0.1.0",
+) {
+  let pending = initializations.get(dataDir);
+  if (!pending) {
+    pending = ensureCompatibleDataRoot(dataDir, { appVersion });
+    initializations.set(dataDir, pending);
+    pending.catch(() => initializations.delete(dataDir));
+  }
+  return pending;
+}

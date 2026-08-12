@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   CURRENT_DATA_SCHEMA_VERSION,
   ensureCompatibleDataRoot,
+  initializeApplicationDataRoot,
 } from "./data-schema";
 
 describe("persistent data schema", () => {
@@ -46,5 +47,18 @@ describe("persistent data schema", () => {
     ).rejects.toThrow("数据目录元信息无法读取");
     expect(await readFile(metaPath, "utf8")).toBe("not-json\n");
   });
-});
 
+  it("shares concurrent application initialization without racing metadata writes", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "ricky-data-schema-"));
+
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        initializeApplicationDataRoot(dataDir, "0.2.0"),
+      ),
+    );
+
+    expect(results.every((item) => item.dataSchemaVersion === 1)).toBe(true);
+    const meta = JSON.parse(await readFile(join(dataDir, "meta.json"), "utf8")) as { appVersion: string };
+    expect(meta.appVersion).toBe("0.2.0");
+  });
+});

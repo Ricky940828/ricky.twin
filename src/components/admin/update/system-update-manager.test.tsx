@@ -84,5 +84,48 @@ describe("SystemUpdateManager", () => {
     expect(await screen.findByText("宿主更新器尚未安装或未上报状态")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "一键更新并重启" })).toBeDisabled();
   });
-});
 
+  it("keeps version checks available after a previous update has finished", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      ok: true,
+      status: {
+        ...baseStatus,
+        currentVersion: "0.2.0",
+        updateAvailable: false,
+        job: {
+          id: "job-1",
+          action: "update",
+          phase: "succeeded",
+          requestedAt: "2026-08-12T00:00:00.000Z",
+          updatedAt: "2026-08-12T00:02:00.000Z",
+          fromVersion: "0.1.0",
+          targetVersion: "0.2.0",
+          message: "更新完成",
+        },
+      },
+    })));
+
+    render(<SystemUpdateManager />);
+
+    expect(await screen.findByText("更新成功")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "检查更新" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "一键更新并重启" })).toBeDisabled();
+  });
+
+  it("distinguishes an unchecked installation from the latest version", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      ok: true,
+      status: {
+        ...baseStatus,
+        latestManifest: null,
+        lastCheckedAt: null,
+        updateAvailable: false,
+        compatibilityMessage: "尚未检查最新版本",
+      },
+    })));
+
+    render(<SystemUpdateManager />);
+
+    expect(await screen.findByText("尚未检查更新")).toBeInTheDocument();
+  });
+});

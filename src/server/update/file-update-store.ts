@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { UPDATE_PHASES, type UpdateJob, type UpdateManifest } from "./update-types";
+import { ACTIVE_UPDATE_PHASES, type UpdateJob, type UpdateManifest } from "./update-types";
 
 export interface UpdateStoreState {
   updaterVersion: string | null;
@@ -25,10 +25,8 @@ interface FileUpdateStoreOptions {
   makeId?: () => string;
 }
 
-const activePhases = new Set(UPDATE_PHASES.slice(1, 8));
-
 function isActive(job: UpdateJob | null) {
-  return Boolean(job && activePhases.has(job.phase));
+  return Boolean(job && ACTIVE_UPDATE_PHASES.has(job.phase));
 }
 
 export function createFileUpdateStore(options: FileUpdateStoreOptions = {}): UpdateStore {
@@ -107,4 +105,3 @@ export function createFileUpdateStore(options: FileUpdateStoreOptions = {}): Upd
     },
   };
 }
-

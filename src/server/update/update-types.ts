@@ -15,6 +15,17 @@ export const UPDATE_PHASES = [
 
 export type UpdatePhase = (typeof UPDATE_PHASES)[number];
 
+export const ACTIVE_UPDATE_PHASES = new Set<UpdatePhase>([
+  "requested",
+  "backing_up",
+  "pulling",
+  "validating",
+  "migrating",
+  "restarting",
+  "health_check",
+  "rolling_back",
+]);
+
 export interface UpdateManifest {
   schemaVersion: 1;
   version: string;
@@ -54,4 +65,3 @@ export interface UpdateSystemStatus {
   lastBackupId: string | null;
   job: UpdateJob | null;
 }
-
