@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,6 +16,25 @@ afterEach(async () => {
 });
 
 describe("FileAgentStore", () => {
+  it("does not replace a corrupt production workspace", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "ricky-agent-"));
+    directories.push(dataDir);
+    const workspacePath = join(dataDir, "agent", "workspace.json");
+    await mkdir(join(dataDir, "agent"), { recursive: true });
+    await writeFile(workspacePath, "not-json\n", "utf8");
+
+    const store = createFileAgentStore({
+      dataDir,
+      strict: true,
+      secret: "test-encryption-secret",
+    });
+
+    await expect(store.getAdminWorkspace()).rejects.toThrow(
+      "Agent 工作区无法读取",
+    );
+    expect(await readFile(workspacePath, "utf8")).toBe("not-json\n");
+  });
+
   it("seeds a protected single-agent protocol and publishes versioned drafts", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "ricky-agent-"));
     directories.push(dataDir);

@@ -25,6 +25,21 @@ describe("FileContentStore", () => {
     await rm(dataDir, { recursive: true, force: true });
   });
 
+  it("does not replace a corrupt production workspace", async () => {
+    const workspacePath = join(dataDir, "content", "workspace.json");
+    await import("node:fs/promises").then(({ mkdir }) =>
+      mkdir(join(dataDir, "content"), { recursive: true }),
+    );
+    await writeFile(workspacePath, "not-json\n", "utf8");
+
+    const store = createFileContentStore({ dataDir, strict: true });
+
+    await expect(store.getWorkspace()).rejects.toThrow(
+      "内容工作区无法读取",
+    );
+    expect(await readFile(workspacePath, "utf8")).toBe("not-json\n");
+  });
+
   it("seeds draft, published content and the first version on first read", async () => {
     const store = createFileContentStore({ dataDir });
 

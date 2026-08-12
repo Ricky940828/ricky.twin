@@ -25,6 +25,7 @@ export interface FileContentStoreOptions {
   dataDir?: string;
   now?: () => Date;
   idSuffix?: () => string;
+  strict?: boolean;
 }
 
 class InvalidWorkspaceError extends Error {}
@@ -109,6 +110,7 @@ export function createFileContentStore(
     join(process.cwd(), ".ricky-twin-data");
   const now = options.now ?? (() => new Date());
   const idSuffix = options.idSuffix ?? defaultSuffix;
+  const strict = options.strict ?? process.env.NODE_ENV === "production";
   const contentDir = join(dataDir, "content");
   const versionsDir = join(contentDir, "versions");
   const workspacePath = join(contentDir, "workspace.json");
@@ -191,6 +193,11 @@ export function createFileContentStore(
           : undefined;
       if (code === "ENOENT") {
         return persistSeed();
+      }
+      if (strict) {
+        const detail =
+          error instanceof Error ? error.message : "无法解析内容工作区";
+        throw new Error(`内容工作区无法读取：${detail}`);
       }
       return recoverCorruptWorkspace(error);
     }

@@ -27,6 +27,7 @@ export interface FileRuntimeStoreOptions {
   maxVisits?: number;
   maxLeads?: number;
   secret?: string;
+  strict?: boolean;
 }
 
 interface StoredRuntimeLead extends Omit<RuntimeLead, "contact"> {
@@ -119,6 +120,7 @@ export function createFileRuntimeStore(
     process.env.RICKY_SECRETS_KEY ??
     process.env.RICKY_ADMIN_SESSION_SECRET ??
     "ricky-local-development-secret-change-before-production";
+  const strict = options.strict ?? process.env.NODE_ENV === "production";
   const runtimeDir = join(dataDir, "runtime");
   const workspacePath = join(runtimeDir, "workspace.json");
   const activeRuns = new Set<string>();
@@ -158,6 +160,11 @@ export function createFileRuntimeStore(
         "code" in error &&
         error.code === "ENOENT";
       if (!missing) {
+        if (strict) {
+          const detail =
+            error instanceof Error ? error.message : "无法解析运行记录";
+          throw new Error(`运行记录无法读取：${detail}`);
+        }
         const recovered = seed();
         recovered.warnings = [
           "运行记录无法读取，已重新建立空白记录。",

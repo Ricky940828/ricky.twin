@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,6 +16,21 @@ afterEach(async () => {
 });
 
 describe("FileKnowledgeStore", () => {
+  it("does not replace a corrupt production workspace", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "ricky-knowledge-"));
+    temporaryDirectories.push(dataDir);
+    const workspacePath = join(dataDir, "knowledge", "workspace.json");
+    await mkdir(join(dataDir, "knowledge"), { recursive: true });
+    await writeFile(workspacePath, "not-json\n", "utf8");
+
+    const store = createFileKnowledgeStore({ dataDir, strict: true });
+
+    await expect(store.getWorkspace()).rejects.toThrow(
+      "知识库工作区无法读取",
+    );
+    expect(await readFile(workspacePath, "utf8")).toBe("not-json\n");
+  });
+
   it("creates a base, ingests markdown and persists a searchable index", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "ricky-knowledge-"));
     temporaryDirectories.push(dataDir);

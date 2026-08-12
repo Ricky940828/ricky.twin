@@ -27,6 +27,7 @@ export interface FileKnowledgeStoreOptions {
   dataDir?: string;
   now?: () => Date;
   id?: (prefix: string) => string;
+  strict?: boolean;
 }
 
 const ACCESS_LEVELS: KnowledgeAccessLevel[] = [
@@ -138,6 +139,7 @@ export function createFileKnowledgeStore(
   const now = options.now ?? (() => new Date());
   const makeId =
     options.id ?? ((prefix: string) => `${prefix}-${randomUUID()}`);
+  const strict = options.strict ?? process.env.NODE_ENV === "production";
   const knowledgeDir = join(dataDir, "knowledge");
   const documentsDir = join(knowledgeDir, "documents");
   const workspacePath = join(knowledgeDir, "workspace.json");
@@ -192,6 +194,11 @@ export function createFileKnowledgeStore(
         "code" in error &&
         error.code === "ENOENT";
       if (!missing) {
+        if (strict) {
+          const detail =
+            error instanceof Error ? error.message : "无法解析知识库工作区";
+          throw new Error(`知识库工作区无法读取：${detail}`);
+        }
         const recovered = emptyWorkspace();
         recovered.warnings = [
           "知识库工作区无法读取，已安全恢复为空工作区。",

@@ -27,6 +27,7 @@ export interface FileAgentStoreOptions {
   now?: () => Date;
   id?: (prefix: string) => string;
   secret?: string;
+  strict?: boolean;
 }
 
 const TOOL_REGISTRY: AgentToolPolicy[] = [
@@ -418,6 +419,7 @@ export function createFileAgentStore(
   const makeId =
     options.id ?? ((prefix: string) => `${prefix}-${randomUUID()}`);
   const secret = resolveSecret(options);
+  const strict = options.strict ?? process.env.NODE_ENV === "production";
   const agentDir = join(dataDir, "agent");
   const workspacePath = join(agentDir, "workspace.json");
   let queue: Promise<unknown> = Promise.resolve();
@@ -477,6 +479,11 @@ export function createFileAgentStore(
         "code" in error &&
         error.code === "ENOENT";
       if (!missing) {
+        if (strict) {
+          const detail =
+            error instanceof Error ? error.message : "无法解析 Agent 工作区";
+          throw new Error(`Agent 工作区无法读取：${detail}`);
+        }
         const recovered = seedWorkspace();
         recovered.warnings = [
           "Agent 工作区无法读取，已安全恢复初始协议。",

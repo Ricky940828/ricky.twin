@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -30,6 +30,21 @@ const policy: AgentUsagePolicy = {
 };
 
 describe("FileRuntimeStore", () => {
+  it("does not replace corrupt production records", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "ricky-runtime-"));
+    temporaryDirectories.push(dataDir);
+    const workspacePath = join(dataDir, "runtime", "workspace.json");
+    await mkdir(join(dataDir, "runtime"), { recursive: true });
+    await writeFile(workspacePath, "not-json\n", "utf8");
+
+    const store = createFileRuntimeStore({ dataDir, strict: true });
+
+    await expect(store.getWorkspace()).rejects.toThrow(
+      "运行记录无法读取",
+    );
+    expect(await readFile(workspacePath, "utf8")).toBe("not-json\n");
+  });
+
   it("在模型调用前执行分钟、并发和每日问题限额", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "ricky-runtime-"));
     temporaryDirectories.push(dataDir);
