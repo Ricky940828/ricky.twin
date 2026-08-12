@@ -378,8 +378,9 @@ export function AgentManager() {
           <Bot aria-hidden />
           <span>
             <small>线上行为版本</small>
-            <strong>{workspace.publishedVersion.note}</strong>
+            <strong>{workspace.published.name}</strong>
             <em>
+              {workspace.publishedVersion.id} ·{" "}
               {formatVersionDate(workspace.publishedVersion.createdAt)}
             </em>
           </span>
@@ -469,6 +470,9 @@ export function AgentManager() {
               <small>
                 {testResult.meta.retrievalCount} 个召回片段 ·{" "}
                 {testResult.meta.latencyMs} ms
+                {typeof testResult.meta.contextBudgetTokens === "number"
+                  ? ` · RAG 预算 ${testResult.meta.contextBudgetTokens.toLocaleString()} Token`
+                  : ""}
                 {testResult.meta.modelName
                   ? ` · ${testResult.meta.modelName}`
                   : ""}
@@ -534,6 +538,107 @@ export function AgentManager() {
             />
           ))}
         </div>
+      </EditorPanel>
+
+      <EditorPanel
+        action={
+          <button
+            aria-label="确认更新 RAG 配置"
+            className="admin-button is-secondary"
+            disabled={busy || !dirty}
+            onClick={() => void save()}
+            type="button"
+          >
+            <Save aria-hidden size={15} />
+            确认更新
+          </button>
+        }
+        description="先按访客权限筛选知识，再检索与排序，最后把命中内容控制在模型剩余上下文以内。"
+        title="RAG 检索与上下文预算"
+      >
+        <div className="admin-form-grid is-three">
+          <label className="admin-field">
+            <span>
+              <strong>上下文预算模式</strong>
+              <small>最大可用到模型剩余窗口</small>
+            </span>
+            <select
+              aria-label="RAG 上下文预算模式"
+              onChange={(event) =>
+                change({
+                  ...draft,
+                  retrieval: {
+                    ...draft.retrieval,
+                    contextBudgetMode: event.target.value as
+                      | "automatic"
+                      | "custom"
+                      | "full",
+                  },
+                })
+              }
+              value={draft.retrieval.contextBudgetMode}
+            >
+              <option value="automatic">自动分配（推荐）</option>
+              <option value="custom">自定义 Token 上限</option>
+              <option value="full">全量使用剩余上下文</option>
+            </select>
+          </label>
+          <TextField
+            aria-label="自定义 RAG 上下文 Token"
+            disabled={draft.retrieval.contextBudgetMode !== "custom"}
+            hint="仅自定义模式生效"
+            label="自定义 Token 上限"
+            min={1}
+            onChange={(event) =>
+              change({
+                ...draft,
+                retrieval: {
+                  ...draft.retrieval,
+                  customContextTokens: Number(event.target.value),
+                },
+              })
+            }
+            type="number"
+            value={draft.retrieval.customContextTokens}
+          />
+          <TextField
+            aria-label="RAG 最大召回片段数"
+            hint="先排序，再按预算裁剪"
+            label="最大召回片段数"
+            min={1}
+            onChange={(event) =>
+              change({
+                ...draft,
+                retrieval: {
+                  ...draft.retrieval,
+                  maxRetrievedChunks: Number(event.target.value),
+                },
+              })
+            }
+            type="number"
+            value={draft.retrieval.maxRetrievedChunks}
+          />
+        </div>
+        <div className="admin-agent-rag-flow" aria-label="RAG 执行流程">
+          <span>01 权限校验</span>
+          <i aria-hidden>→</i>
+          <span>02 知识库路由</span>
+          <i aria-hidden>→</i>
+          <span>03 检索排序</span>
+          <i aria-hidden>→</i>
+          <span>04 上下文预算</span>
+          <i aria-hidden>→</i>
+          <span>05 调用模型</span>
+        </div>
+        <p className="admin-agent-rag-note">
+          当前主模型上下文：
+          <strong>
+            {activeModel
+              ? `${activeModel.contextWindowTokens.toLocaleString()} Token`
+              : "尚未配置"}
+          </strong>
+          。全量模式会扣除系统协议、公开资料、历史对话、当前问题、输出预留与安全余量后，使用全部剩余空间。
+        </p>
       </EditorPanel>
 
       <EditorPanel
@@ -624,6 +729,18 @@ export function AgentManager() {
       </EditorPanel>
 
       <EditorPanel
+        action={
+          <button
+            aria-label="确认更新用量配置"
+            className="admin-button is-secondary"
+            disabled={busy || !dirty}
+            onClick={() => void save()}
+            type="button"
+          >
+            <Save aria-hidden size={15} />
+            确认更新
+          </button>
+        }
         description="限额在模型调用前执行，不依赖模型是否遵守提示词。"
         title="用量与成本保护"
       >

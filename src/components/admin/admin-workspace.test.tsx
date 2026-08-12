@@ -90,6 +90,7 @@ describe("AdminWorkspace", () => {
     const statement = await screen.findByLabelText("首页主张");
     await user.clear(statement);
     await user.type(statement, "后台实时修改后的首页主张");
+    await user.click(screen.getByRole("button", { name: "导航与页面" }));
     await user.click(screen.getByLabelText("展示实践现场"));
     expect(screen.getByText("未保存")).toBeInTheDocument();
 
@@ -101,7 +102,7 @@ describe("AdminWorkspace", () => {
       "新的交易结构与商业判断定位",
     );
 
-    await user.click(screen.getByRole("button", { name: "项目主题" }));
+    await user.click(screen.getByRole("button", { name: "项目与能力" }));
     await user.selectOptions(
       screen.getByLabelText("选择项目主题"),
       "asset-fund-standardization",

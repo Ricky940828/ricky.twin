@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeDotOffset } from "./dot-field-math";
+import { computeDotOffset, computePulseDecay } from "./dot-field-math";
 
 const options = {
   radius: 160,
@@ -44,5 +44,15 @@ describe("computeDotOffset", () => {
     );
 
     expect(near.intensity).toBeGreaterThan(far.intensity);
+  });
+});
+
+describe("computePulseDecay", () => {
+  it("keeps a fresh pointer trace visible and fades it completely", () => {
+    expect(computePulseDecay(0, 1600)).toBe(1);
+    expect(computePulseDecay(800, 1600)).toBeGreaterThan(0);
+    expect(computePulseDecay(800, 1600)).toBeLessThan(1);
+    expect(computePulseDecay(1600, 1600)).toBe(0);
+    expect(computePulseDecay(2200, 1600)).toBe(0);
   });
 });

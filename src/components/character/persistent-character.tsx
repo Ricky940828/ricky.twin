@@ -3,6 +3,8 @@
 import { useGSAP } from "@gsap/react";
 import { useRef, useState } from "react";
 
+import type { IdentityCardContent } from "@/content/types";
+
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import {
   ensureGsapPlugins,
@@ -13,12 +15,14 @@ import {
   CAREER_PROGRESS_EVENT,
   type CareerProgressDetail,
 } from "@/lib/career-progress";
+import { DIRECT_NAVIGATION_EVENT } from "@/lib/direct-navigation";
 
 import {
   CharacterVideo,
   type CharacterScene,
 } from "./character-video";
 import { IdentityCardDialog } from "./identity-card-dialog";
+import type { IdentityCardFace } from "./identity-card-dialog";
 import { LanyardBadge } from "./lanyard-badge";
 
 type NarrativeScene = CharacterScene | "hidden";
@@ -35,22 +39,47 @@ const STAGE = {
   height: 640,
 };
 
-const ROUTE_VIEWBOX = {
-  width: 760,
-  height: 360,
-};
+const CHARACTER_MOTION = {
+  sceneDuration: 0.92,
+  careerEntranceDuration: 0.3,
+  careerFollowDuration: 0.3,
+  careerEntranceMinimumFollow: 0.16,
+} as const;
+
+const CAREER_CHARACTER_ANCHOR = {
+  x: 0.5,
+  feetY: 0.92,
+} as const;
 
 function clamp(value: number, minimum = 0, maximum = 1) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-export function PersistentCharacter() {
+export interface IdentityCardPreviewRequest {
+  face: IdentityCardFace;
+  requestId: number;
+}
+
+export function PersistentCharacter({
+  identityCard,
+  identityPreview,
+}: {
+  identityCard?: IdentityCardContent;
+  identityPreview?: IdentityCardPreviewRequest | null;
+}) {
   const stageRef = useRef<HTMLDivElement>(null);
   const floatRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<NarrativeScene>("hero");
   const [scene, setScene] = useState<NarrativeScene>("hero");
   const [identityOpen, setIdentityOpen] = useState(false);
+  const [dismissedPreviewRequestId, setDismissedPreviewRequestId] =
+    useState<number | null>(null);
   const reducedMotion = usePrefersReducedMotion();
+  const identityDialogOpen = identityPreview
+    ? dismissedPreviewRequestId !== identityPreview.requestId
+    : identityPreview === null
+      ? false
+      : identityOpen;
 
   useGSAP(
     () => {
@@ -69,7 +98,7 @@ export function PersistentCharacter() {
       }
 
       ensureGsapPlugins();
-      let loungeExpanded = false;
+      let careerEntranceUntil = 0;
       let careerProgress = Number(
         document.documentElement.dataset.careerProgress ?? 0,
       );
@@ -115,19 +144,6 @@ export function PersistentCharacter() {
         }
 
         if (nextScene === "lounge") {
-          if (!loungeExpanded) {
-            const scale = viewportWidth <= 1050 ? 0.36 : 0.43;
-            return {
-              x:
-                viewportWidth <= 1050
-                  ? viewportWidth - STAGE.width * scale - 18
-                  : viewportWidth * 0.54,
-              y: viewportHeight * 0.22,
-              scale,
-              autoAlpha: 1,
-            };
-          }
-
           const scale = viewportWidth <= 1050 ? 0.48 : 0.84;
           return {
             x:
@@ -156,6 +172,8 @@ export function PersistentCharacter() {
       const moveCharacter = (
         target: gsap.TweenVars,
         immediate = false,
+        duration: number = CHARACTER_MOTION.sceneDuration,
+        ease: string = "power2.inOut",
       ) => {
         if (immediate || reducedMotion) {
           gsap.set(stage, {
@@ -168,44 +186,68 @@ export function PersistentCharacter() {
 
         gsap.to(stage, {
           ...target,
-          duration: 0.58,
-          ease: "power3.out",
+          duration,
+          ease,
           overwrite: "auto",
           transformOrigin: "0 0",
           force3D: true,
         });
       };
 
-      const updateCareerRoute = (progress: number) => {
-        const routeMap =
-          document.querySelector<HTMLElement>(".career-route__map");
+      const getCareerRouteScreenPoint = (progress: number) => {
         const routePath = document.querySelector<SVGPathElement>(
           "[data-career-path='true']",
         );
         if (
-          !routeMap ||
           !routePath ||
           typeof routePath.getTotalLength !== "function" ||
           typeof routePath.getPointAtLength !== "function"
         ) {
-          return;
+          return null;
         }
 
-        const boundedProgress = clamp(progress);
         const point = routePath.getPointAtLength(
-          routePath.getTotalLength() * boundedProgress,
+          routePath.getTotalLength() * clamp(progress),
         );
-        const bounds = routeMap.getBoundingClientRect();
+        const screenMatrix = routePath.getScreenCTM();
+        if (!screenMatrix) {
+          return null;
+        }
+
+        return {
+          x:
+            screenMatrix.a * point.x +
+            screenMatrix.c * point.y +
+            screenMatrix.e,
+          y:
+            screenMatrix.b * point.x +
+            screenMatrix.d * point.y +
+            screenMatrix.f,
+        };
+      };
+
+      const updateCareerRoute = (
+        progress: number,
+        immediate = true,
+        duration: number = CHARACTER_MOTION.careerFollowDuration,
+        ease: string = "power2.out",
+      ) => {
+        const screenPoint = getCareerRouteScreenPoint(progress);
+        if (!screenPoint) {
+          return;
+        }
         const target = sceneTarget("career");
         const scale = Number(target.scale ?? 0.32);
         const x =
-          bounds.left +
-          (point.x / ROUTE_VIEWBOX.width) * bounds.width -
-          STAGE.width * scale * 0.5;
+          screenPoint.x -
+          STAGE.width * scale * CAREER_CHARACTER_ANCHOR.x;
+        const visibleFootY = Math.min(
+          screenPoint.y,
+          window.innerHeight - 28,
+        );
         const routeY =
-          bounds.top +
-          (point.y / ROUTE_VIEWBOX.height) * bounds.height -
-          STAGE.height * scale * 0.78;
+          visibleFootY -
+          STAGE.height * scale * CAREER_CHARACTER_ANCHOR.feetY;
         const y = Math.max(64, routeY);
 
         moveCharacter(
@@ -215,7 +257,9 @@ export function PersistentCharacter() {
             scale,
             autoAlpha: 1,
           },
-          true,
+          immediate,
+          duration,
+          ease,
         );
       };
 
@@ -224,30 +268,41 @@ export function PersistentCharacter() {
         immediate = false,
       ) => {
         const changed = sceneRef.current !== nextScene;
-        let changedLoungePlacement = false;
-        if (nextScene === "lounge") {
-          const loungeStage = document.querySelector<HTMLElement>(
-            ".lounge-stage",
-          );
-          const nextExpanded =
-            (loungeStage?.getBoundingClientRect().top ??
-              Number.POSITIVE_INFINITY) <
-            window.innerHeight * 0.36;
-          changedLoungePlacement = loungeExpanded !== nextExpanded;
-          loungeExpanded = nextExpanded;
-        }
         if (changed) {
           gsap.killTweensOf(stage);
+          careerEntranceUntil =
+            nextScene === "career" && !immediate && !reducedMotion
+              ? performance.now() +
+                CHARACTER_MOTION.careerEntranceDuration * 1000
+              : 0;
           sceneRef.current = nextScene;
           setScene(nextScene);
         }
 
         if (nextScene === "career") {
-          updateCareerRoute(careerProgress);
+          const entranceRemaining = Math.max(
+            0,
+            careerEntranceUntil - performance.now(),
+          );
+          updateCareerRoute(
+            careerProgress,
+            immediate,
+            changed
+              ? CHARACTER_MOTION.careerEntranceDuration
+              : entranceRemaining > 0
+                ? Math.max(
+                    CHARACTER_MOTION.careerEntranceMinimumFollow,
+                    entranceRemaining / 1000,
+                  )
+                : CHARACTER_MOTION.careerFollowDuration,
+            changed || entranceRemaining > 0
+              ? "power2.inOut"
+              : "power2.out",
+          );
           return;
         }
 
-        if (changed || immediate || changedLoungePlacement) {
+        if (changed || immediate) {
           moveCharacter(sceneTarget(nextScene), immediate);
         }
       };
@@ -285,7 +340,21 @@ export function PersistentCharacter() {
           return;
         }
 
-        if (isVisible(career, 0.28, 0.72)) {
+        const careerRoutePoint = getCareerRouteScreenPoint(careerProgress);
+        const careerRouteMap = document.querySelector<HTMLElement>(
+          ".career-route__map",
+        );
+        const careerRouteBounds = careerRouteMap?.getBoundingClientRect();
+        const careerRouteReady =
+          Boolean(careerRoutePoint && careerRouteBounds) &&
+          careerRoutePoint!.y >= 40 &&
+          careerRoutePoint!.y <= window.innerHeight * 0.9 &&
+          careerRouteBounds!.bottom > 84 &&
+          careerRouteBounds!.top < window.innerHeight * 0.9;
+
+        const careerNarrativeVisible = isVisible(career, 0.28, 0.72);
+
+        if (careerNarrativeVisible || careerRouteReady) {
           setNarrativeScene("career", immediate);
         } else if (
           isVisible(projects, 0.72, 0.25) ||
@@ -357,19 +426,44 @@ export function PersistentCharacter() {
         rotate(0);
       };
       const handleResize = () => resolveScene(true);
+      const handleDirectNavigation = () => {
+        if (animationFrame) {
+          window.cancelAnimationFrame(animationFrame);
+          animationFrame = 0;
+        }
+        resolveScene(true);
+      };
       const handleCareerProgress = (event: Event) => {
         careerProgress = clamp(
           (event as CustomEvent<CareerProgressDetail>).detail?.progress ??
             0,
         );
         if (sceneRef.current === "career") {
-          updateCareerRoute(careerProgress);
+          const entranceRemaining = Math.max(
+            0,
+            careerEntranceUntil - performance.now(),
+          );
+          updateCareerRoute(
+            careerProgress,
+            false,
+            entranceRemaining > 0
+              ? Math.max(
+                  CHARACTER_MOTION.careerEntranceMinimumFollow,
+                  entranceRemaining / 1000,
+                )
+              : CHARACTER_MOTION.careerFollowDuration,
+            entranceRemaining > 0 ? "power2.inOut" : "power2.out",
+          );
         }
       };
 
       window.addEventListener("scroll", scheduleResolve, { passive: true });
       window.addEventListener("resize", handleResize, { passive: true });
       window.addEventListener("hashchange", scheduleResolve);
+      window.addEventListener(
+        DIRECT_NAVIGATION_EVENT,
+        handleDirectNavigation,
+      );
       window.addEventListener(
         CAREER_PROGRESS_EVENT,
         handleCareerProgress,
@@ -395,6 +489,10 @@ export function PersistentCharacter() {
         window.removeEventListener("scroll", scheduleResolve);
         window.removeEventListener("resize", handleResize);
         window.removeEventListener("hashchange", scheduleResolve);
+        window.removeEventListener(
+          DIRECT_NAVIGATION_EVENT,
+          handleDirectNavigation,
+        );
         window.removeEventListener(
           CAREER_PROGRESS_EVENT,
           handleCareerProgress,
@@ -431,11 +529,13 @@ export function PersistentCharacter() {
               data-active={scene === characterScene ? "true" : "false"}
               data-scene-layer={characterScene}
             >
-              <CharacterVideo
-                active={scene === characterScene}
-                priority={characterScene === "hero"}
-                scene={characterScene}
-              />
+              {scene === characterScene ? (
+                <CharacterVideo
+                  active
+                  priority={characterScene === "hero"}
+                  scene={characterScene}
+                />
+              ) : null}
             </div>
           ))}
           {badgeVisible ? (
@@ -461,8 +561,17 @@ export function PersistentCharacter() {
       </div>
 
       <IdentityCardDialog
-        onClose={() => setIdentityOpen(false)}
-        open={identityOpen}
+        content={identityCard}
+        faceRequestId={identityPreview?.requestId}
+        initialFace={identityPreview?.face}
+        onClose={() => {
+          if (identityPreview) {
+            setDismissedPreviewRequestId(identityPreview.requestId);
+          } else {
+            setIdentityOpen(false);
+          }
+        }}
+        open={identityDialogOpen}
       />
     </>
   );

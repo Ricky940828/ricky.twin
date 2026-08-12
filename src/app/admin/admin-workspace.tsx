@@ -15,6 +15,11 @@ import {
   ContentEditor,
   type AdminEditorId,
 } from "@/components/admin/content-editor";
+import {
+  getDefaultEditorTarget,
+  type AdminPreviewFocusRequest,
+  type AdminPreviewTarget,
+} from "@/components/admin/content-editor-config";
 import { LivePreview } from "@/components/admin/live-preview";
 import { KnowledgeManager } from "@/components/admin/knowledge/knowledge-manager";
 import { AgentManager } from "@/components/admin/agent/agent-manager";
@@ -38,7 +43,12 @@ export function AdminWorkspace() {
   );
   const [draft, setDraft] = useState<SiteContent | null>(null);
   const [activeEditor, setActiveEditor] =
-    useState<AdminEditorId>("overview");
+    useState<AdminEditorId>("home");
+  const [previewFocus, setPreviewFocus] =
+    useState<AdminPreviewFocusRequest>(() => ({
+      ...getDefaultEditorTarget("home"),
+      requestId: 1,
+    }));
   const [activeModule, setActiveModule] =
     useState<AdminModuleId>("content");
   const [saveState, setSaveState] = useState<SaveState>("saved");
@@ -98,6 +108,24 @@ export function AdminWorkspace() {
     setDraft(content);
     setSaveState("dirty");
   };
+
+  const requestPreviewFocus = useCallback(
+    (target: AdminPreviewTarget) => {
+      setPreviewFocus((current) => ({
+        ...target,
+        requestId: current.requestId + 1,
+      }));
+    },
+    [],
+  );
+
+  const changeEditor = useCallback(
+    (editor: AdminEditorId) => {
+      setActiveEditor(editor);
+      requestPreviewFocus(getDefaultEditorTarget(editor));
+    },
+    [requestPreviewFocus],
+  );
 
   const saveDraft = async () => {
     if (!draft) {
@@ -197,7 +225,7 @@ export function AdminWorkspace() {
     <AdminShell
       activeEditor={activeEditor}
       activeModule={activeModule}
-      onEditorChange={setActiveEditor}
+      onEditorChange={changeEditor}
       onLogout={() => void logout()}
       onModuleChange={setActiveModule}
       onSave={() => void saveDraft()}
@@ -216,11 +244,13 @@ export function AdminWorkspace() {
               activeEditor={activeEditor}
               content={draft}
               onChange={updateDraft}
+              onFocusChange={requestPreviewFocus}
             />
           </div>
           <LivePreview
             canPublish={saveState === "saved"}
             content={draft}
+            focus={previewFocus}
             onPublish={publishDraft}
           />
         </div>

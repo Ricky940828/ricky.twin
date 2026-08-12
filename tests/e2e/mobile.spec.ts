@@ -19,7 +19,7 @@ test("移动端保持单列叙事、横向实践入口和可用的会客厅输�
 
   await page.locator("#projects").scrollIntoViewIfNeeded();
   await expect(page.locator(".card-swap")).toBeVisible();
-  await expect(page.locator(".project-solution")).toBeVisible();
+  await expect(page.locator(".project-capability-map")).toBeVisible();
 
   await page.locator(".practice-dock").scrollIntoViewIfNeeded();
   await expect(page.locator(".practice-dock__items")).toHaveCSS(

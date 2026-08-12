@@ -71,6 +71,11 @@ const agent: AgentConfig = {
     },
   ],
   knowledgeBaseIds: ["public", "authorized"],
+  retrieval: {
+    contextBudgetMode: "automatic",
+    customContextTokens: 16_000,
+    maxRetrievedChunks: 12,
+  },
   usage: {
     anonymousPerMinute: 4,
     anonymousDailyQuestions: 20,
@@ -93,6 +98,7 @@ const model: ResolvedModelConnection = {
   apiKey: "secret",
   enabled: true,
   timeoutMs: 20_000,
+  contextWindowTokens: 128_000,
   maxOutputTokens: 1_200,
   createdAt: "2026-07-30T00:00:00.000Z",
   updatedAt: "2026-07-30T00:00:00.000Z",
@@ -247,8 +253,34 @@ describe("runChat", () => {
     expect(request.system).toContain("机构合作先判断主体");
     expect(request.system).not.toContain("内部盈利测算费率");
     expect(request.system).not.toContain("职业.md");
+    expect(request.system).toContain("模型标识为“example-model”");
+    expect(request.system).toContain("历史中的 Kimi");
     expect(request.system.length).toBeLessThan(10_000);
     expect(invoke.mock.calls[0][0].maxOutputTokens).toBe(600);
+  });
+
+  it("按 Agent 配置计算并记录 RAG 上下文 Token 预算", async () => {
+    const deps = dependencies();
+    deps.getAgent.mockResolvedValue({
+      ...agent,
+      retrieval: {
+        ...agent.retrieval,
+        contextBudgetMode: "custom",
+        customContextTokens: 24,
+      },
+    });
+
+    const result = await runChat(deps, {
+      question: "机构合作怎么判断",
+      history: [],
+      actor: {
+        tier: "anonymous",
+        allowedBaseIds: [],
+        visitorId: "visitor-1",
+      },
+    });
+
+    expect(result.meta.contextBudgetTokens).toBe(24);
   });
 
   it("没有启用模型时明确返回演示模式，不伪装真实回答", async () => {
@@ -298,6 +330,33 @@ describe("runChat", () => {
     expect(result.answer).not.toContain("/Users/");
     expect(result.answer).not.toContain("sk-abcdefghijklmnopqrstuvwxyz");
     expect(result.answer).toContain("[已隐藏]");
+  });
+
+  it("不会把模型的内部思考标签和过程暴露给访客", async () => {
+    const result = await runChat(
+      dependencies(async () => ({
+        text:
+          "<think>这是模型内部分析，不应展示。</think>\n\n## 核心判断\n\n只展示正式答案。",
+        usage: {
+          promptTokens: 3,
+          completionTokens: 3,
+          totalTokens: 6,
+        },
+      })),
+      {
+        question: "请给出判断",
+        history: [],
+        actor: {
+          tier: "anonymous",
+          allowedBaseIds: [],
+          visitorId: "visitor-1",
+        },
+      },
+    );
+
+    expect(result.answer).not.toContain("内部分析");
+    expect(result.answer).not.toContain("<think>");
+    expect(result.answer).toContain("## 核心判断");
   });
 
   it("深度受限问题返回申请权限动作，但不泄露知识库标识", async () => {

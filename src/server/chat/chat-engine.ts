@@ -7,6 +7,10 @@ import type {
 } from "@/server/agent/agent-types";
 import { retrieveKnowledge } from "@/server/knowledge/knowledge-retriever";
 import type { KnowledgeWorkspace } from "@/server/knowledge/knowledge-types";
+import {
+  estimateTextTokens,
+  resolveContextTokenBudget,
+} from "@/server/token-budget";
 
 import { compileAgentPrompt } from "./agent-prompt";
 import { buildPublicProfile } from "./public-profile";
@@ -34,8 +38,14 @@ function toolEnabled(agent: AgentConfig, id: string) {
   return agent.tools.some((tool) => tool.id === id && tool.enabled);
 }
 
-function sanitizeAnswer(value: string) {
+export function sanitizeChatFragment(value: string) {
   return value
+    .replace(
+      /<(think|analysis)>[\s\S]*?<\/\1>/gi,
+      "",
+    )
+    .replace(/<(think|analysis)>[\s\S]*$/gi, "")
+    .replace(/<\/?(?:think|analysis)>/gi, "")
     .replace(/\/Users\/[^\s，。；;！!？?]+/g, "[已隐藏]")
     .replace(
       /(?:00-工作台|我的知识库)\/[^\s，。；;！!？?]+/g,
@@ -45,7 +55,11 @@ function sanitizeAnswer(value: string) {
     .replace(
       /\b(?:api[_ -]?key|secret)\s*[:：=]\s*\S+/gi,
       "[已隐藏]",
-    )
+    );
+}
+
+function sanitizeAnswer(value: string) {
+  return sanitizeChatFragment(value)
     .trim()
     .slice(0, 12_000);
 }
@@ -144,21 +158,6 @@ export async function runChat(
       : Promise.resolve(null),
   ]);
   const publicProfile = content ? buildPublicProfile(content) : "";
-  const retrieval = knowledge
-    ? retrieveKnowledge(knowledge, {
-        query: question,
-        allowedBaseIds: input.actor.allowedBaseIds,
-        owner: input.actor.tier === "owner",
-        baseIds: agent.knowledgeBaseIds,
-        limit: 6,
-        maxChars: 5_500,
-      })
-    : { matches: [], context: "", deniedBaseIds: [] };
-  const action = nextAction(
-    agent,
-    question,
-    retrieval.deniedBaseIds.length > 0,
-  );
   const historyLimit = Math.max(0, agent.usage.maxSessionTurns * 2);
   const history = (Array.isArray(input.history) ? input.history : [])
     .filter(
@@ -172,6 +171,49 @@ export async function runChat(
       role: message.role,
       content: message.content.slice(0, agent.usage.maxInputChars),
     }));
+  const outputReserveTokens = Math.min(
+    model.maxOutputTokens,
+    agent.usage.maxOutputTokens,
+  );
+  const baseSystemPrompt = compileAgentPrompt({
+    agent,
+    publicProfile,
+    knowledgeContext: "",
+    runtimeModel: {
+      name: model.name,
+      modelId: model.modelId,
+    },
+  });
+  const usedInputTokens =
+    estimateTextTokens(baseSystemPrompt) +
+    estimateTextTokens(question) +
+    history.reduce(
+      (total, message) => total + estimateTextTokens(message.content),
+      0,
+    ) +
+    (history.length + 1) * 8;
+  const contextBudgetTokens = resolveContextTokenBudget({
+    mode: agent.retrieval.contextBudgetMode,
+    customContextTokens: agent.retrieval.customContextTokens,
+    contextWindowTokens: model.contextWindowTokens,
+    usedInputTokens,
+    outputReserveTokens,
+  });
+  const retrieval = knowledge
+    ? retrieveKnowledge(knowledge, {
+        query: question,
+        allowedBaseIds: input.actor.allowedBaseIds,
+        owner: input.actor.tier === "owner",
+        baseIds: agent.knowledgeBaseIds,
+        limit: agent.retrieval.maxRetrievedChunks,
+        maxTokens: contextBudgetTokens,
+      })
+    : { matches: [], context: "", deniedBaseIds: [] };
+  const action = nextAction(
+    agent,
+    question,
+    retrieval.deniedBaseIds.length > 0,
+  );
 
   try {
     const response = await (
@@ -179,16 +221,17 @@ export async function runChat(
     )(
       {
         ...model,
-        maxOutputTokens: Math.min(
-          model.maxOutputTokens,
-          agent.usage.maxOutputTokens,
-        ),
+        maxOutputTokens: outputReserveTokens,
       },
       {
         system: compileAgentPrompt({
           agent,
           publicProfile,
           knowledgeContext: retrieval.context,
+          runtimeModel: {
+            name: model.name,
+            modelId: model.modelId,
+          },
         }),
         messages: [
           ...history,
@@ -212,13 +255,20 @@ export async function runChat(
           : undefined,
       meta: {
         retrievalCount: retrieval.matches.length,
+        contextBudgetTokens,
         latencyMs: Math.max(0, now() - startedAt),
-        modelName: model.name,
+        modelName: response.providerModelId
+          ? `${model.name}（实际 ${response.providerModelId}）`
+          : model.name,
         usage: response.usage,
         knowledgeBaseNames: debugNames,
       },
     };
-  } catch {
+  } catch (error) {
+    console.warn(
+      "[chat] model invocation failed:",
+      error instanceof Error ? error.message : "unknown model error",
+    );
     return blocked(
       "model-unavailable",
       "数字分身暂时无法完成回答，请稍后再试，或先浏览公开职业与项目内容。",

@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 
-import type { ProjectTheme } from "@/content/types";
+import type { ProjectTheme, SitePresentation } from "@/content/types";
 import {
   ensureGsapPlugins,
   gsap,
@@ -25,12 +25,28 @@ import {
   getCardScrollProgress,
 } from "./card-swap-model";
 import { ProjectDetailDialog } from "./project-detail-dialog";
+import { ProjectCapabilityMap } from "./project-capability-map";
 
 interface ProjectsSectionProps {
   projects: ProjectTheme[];
+  capabilityAxes?: readonly string[];
+  presentation?: SitePresentation["projects"];
 }
 
-export function ProjectsSection({ projects }: ProjectsSectionProps) {
+const FALLBACK_CAPABILITY_AXES = [
+  "机构与资产评估",
+  "交易结构设计与盈利模型测算",
+  "金融产品方案设计与跨部门协同",
+  "业务规则系统化与 PRD 落地",
+  "项目上线运营与数据经营分析",
+  "标准化沉淀与 AI 赋能",
+] as const;
+
+export function ProjectsSection({
+  projects,
+  capabilityAxes = FALLBACK_CAPABILITY_AXES,
+  presentation,
+}: ProjectsSectionProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const guideTweenRef = useRef<gsap.core.Tween | null>(null);
@@ -41,9 +57,12 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
         .sort((a, b) => a.order - b.order),
     [projects],
   );
+  const visibleProjectCount = visibleProjects.length;
+  const hasScrollableProjects = visibleProjectCount > 1;
+  const visibleProjectCountRef = useRef(visibleProjectCount);
   const [state, dispatch] = useReducer(
     cardSwapReducer,
-    visibleProjects.length,
+    visibleProjectCount,
     createCardSwapState,
   );
   const [openProject, setOpenProject] = useState<ProjectTheme | null>(null);
@@ -54,8 +73,33 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
   const activeIndexRef = useRef(activeIndex);
 
   useEffect(() => {
+    visibleProjectCountRef.current = visibleProjectCount;
+    dispatch({
+      type: "set-count",
+      count: visibleProjectCount,
+    });
+    const refreshFrame = window.requestAnimationFrame(() => {
+      ScrollTrigger.refresh();
+    });
+    return () => window.cancelAnimationFrame(refreshFrame);
+  }, [visibleProjectCount]);
+
+  useEffect(() => {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
+
+  useEffect(() => {
+    const resetForFreshEntry = () => {
+      activeIndexRef.current = 0;
+      dispatch({ type: "select", index: 0 });
+    };
+    window.addEventListener("ricky:projects-enter", resetForFreshEntry);
+    return () =>
+      window.removeEventListener(
+        "ricky:projects-enter",
+        resetForFreshEntry,
+      );
+  }, []);
 
   useGSAP(
     () => {
@@ -67,7 +111,7 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
       if (
         !stage ||
         !hasDesktopMedia ||
-        visibleProjects.length <= 1
+        visibleProjectCountRef.current <= 1
       ) {
         return;
       }
@@ -80,15 +124,16 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
           `+=${Math.round(
             window.innerHeight *
               0.72 *
-              (visibleProjects.length - 1),
+              (visibleProjectCountRef.current - 1),
           )}`,
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
+          const projectCount = visibleProjectCountRef.current;
           const nextIndex = getCardIndexForScroll(
             self.progress,
-            visibleProjects.length,
+            projectCount,
           );
           if (nextIndex !== activeIndexRef.current) {
             activeIndexRef.current = nextIndex;
@@ -109,7 +154,11 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
         scrollTriggerRef.current = null;
       };
     },
-    { dependencies: [visibleProjects.length] },
+    {
+      dependencies: [hasScrollableProjects],
+      revertOnUpdate: true,
+      scope: stageRef,
+    },
   );
 
   if (visibleProjects.length === 0) {
@@ -158,12 +207,10 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
   return (
     <section className="projects-section site-section" id="projects">
       <div className="projects-section__intro">
-        <span className="eyebrow">SELECTED WORK · PROBLEM SOLVING</span>
-        <h2 className="section-title">项目不是清单，而是能力如何解决问题。</h2>
+        <span className="eyebrow">{presentation?.eyebrow ?? "SELECTED WORK · PROBLEM SOLVING"}</span>
+        <h2 className="section-title">{presentation?.title ?? "项目不是清单，而是能力如何解决问题。"}</h2>
         <div className="projects-section__intro-side">
-          <p className="section-copy">
-            向下滚动或拖动卡片切换项目主题，右侧同步展开从业务问题到抽象成果的解题路径。
-          </p>
+          <p className="section-copy">{presentation?.body ?? "向下滚动或拖动卡片切换项目主题，右侧同步点亮这个项目调用的能力组合。"}</p>
           <span className="projects-section__counter">
             {String(activeIndex + 1).padStart(2, "0")} /{" "}
             {String(visibleProjects.length).padStart(2, "0")}
@@ -177,58 +224,38 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
             activeIndex={activeIndex}
             onChange={selectProject}
             onOpen={setOpenProject}
+            presentation={presentation}
             projects={visibleProjects}
           />
-          <div className="projects-stage__controls">
-            <button
-              aria-label="上一个项目"
-              disabled={activeIndex === 0}
-              onClick={() => selectProject(activeIndex - 1)}
-              type="button"
-            >
-              <ArrowLeft aria-hidden size={17} />
-            </button>
-            <button
-              aria-label="下一个项目"
-              disabled={activeIndex === visibleProjects.length - 1}
-              onClick={() => selectProject(activeIndex + 1)}
-              type="button"
-            >
-              <ArrowRight aria-hidden size={17} />
-            </button>
+          <div className="projects-stage__footer">
+            <div className="projects-stage__controls">
+              <button
+                aria-label="上一个项目"
+                disabled={activeIndex === 0}
+                onClick={() => selectProject(activeIndex - 1)}
+                type="button"
+              >
+                <ArrowLeft aria-hidden size={17} />
+              </button>
+              <button
+                aria-label="下一个项目"
+                disabled={activeIndex === visibleProjects.length - 1}
+                onClick={() => selectProject(activeIndex + 1)}
+                type="button"
+              >
+                <ArrowRight aria-hidden size={17} />
+              </button>
+            </div>
           </div>
         </div>
 
-        <div
-          key={currentProject.id}
-          aria-live="polite"
-          className="project-solution glass-panel"
-        >
-          <div className="project-solution__heading">
-            <span>{currentProject.eyebrow}</span>
-            <h3>{currentProject.title}</h3>
-            <p>{currentProject.summary}</p>
-          </div>
-          <div className="project-solution__steps">
-            {currentProject.solutionPath.map((step, index) => (
-              <article key={step.label}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <div>
-                  <h4>{step.label}</h4>
-                  <p>{step.content}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-          <button
-            className="project-solution__detail"
-            onClick={() => setOpenProject(currentProject)}
-            type="button"
-          >
-            查看项目完整说明
-            <ArrowRight aria-hidden size={16} />
-          </button>
-        </div>
+        <ProjectCapabilityMap
+          activeIndex={activeIndex}
+          axes={capabilityAxes}
+          project={currentProject}
+          presentation={presentation}
+          total={visibleProjects.length}
+        />
       </div>
 
       <ProjectDetailDialog

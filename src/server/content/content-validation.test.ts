@@ -25,6 +25,36 @@ describe("validateSiteContent", () => {
     expect(result.value.hero).not.toBe(siteContent.hero);
   });
 
+  it("normalizes the current identity-card defaults for an older saved workspace", () => {
+    const candidate = cloneSeed();
+    delete candidate.identityCard;
+
+    const result = validateSiteContent(candidate);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.identityCard?.front.name).toBe("李富豪 · Ricky");
+    expect(result.value.identityCard?.back.title).toBe("知识与访问权限");
+  });
+
+  it("rejects an empty configured identity-card field with its exact path", () => {
+    const candidate = cloneSeed();
+    candidate.identityCard!.front.summary = "";
+
+    const result = validateSiteContent(candidate);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.issues).toContainEqual({
+      path: "identityCard.front.summary",
+      message: "必须填写文本",
+    });
+  });
+
   it("rejects duplicate section orders", () => {
     const candidate = cloneSeed();
     candidate.sections[1].order = candidate.sections[0].order;

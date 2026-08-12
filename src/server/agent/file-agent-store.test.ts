@@ -65,6 +65,7 @@ describe("FileAgentStore", () => {
       modelId: "chatgpt-5.5",
       enabled: true,
       timeoutMs: 30_000,
+      contextWindowTokens: 1_048_576,
       maxOutputTokens: 1_200,
     });
     const connection = workspace.models[0];
@@ -73,6 +74,7 @@ describe("FileAgentStore", () => {
       expect.objectContaining({
         apiKeyConfigured: true,
         apiKeyHint: "…wser",
+        contextWindowTokens: 1_048_576,
       }),
     );
     expect(connection).not.toHaveProperty("apiKey");

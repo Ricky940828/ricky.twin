@@ -76,14 +76,30 @@ export function EditorPanel({
   description,
   children,
   action,
+  panelId,
+  onActivate,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   action?: ReactNode;
+  panelId?: string;
+  onActivate?: (panelId: string) => void;
 }) {
+  const activate = () => {
+    if (panelId) {
+      onActivate?.(panelId);
+    }
+  };
+
   return (
-    <section className="admin-editor-panel">
+    <section
+      className="admin-editor-panel"
+      data-editor-panel-id={panelId}
+      id={panelId ? `admin-panel-${panelId}` : undefined}
+      onFocusCapture={activate}
+      onPointerDownCapture={activate}
+    >
       <header>
         <div>
           <h2>{title}</h2>

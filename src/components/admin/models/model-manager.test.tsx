@@ -44,6 +44,7 @@ describe("ModelManager", () => {
                 modelId: "example-model",
                 enabled: true,
                 timeoutMs: 30_000,
+                contextWindowTokens: 1_048_576,
                 maxOutputTokens: 1_200,
                 createdAt: emptyWorkspace.updatedAt,
                 updatedAt: emptyWorkspace.updatedAt,
@@ -72,6 +73,11 @@ describe("ModelManager", () => {
     );
     await user.type(screen.getByLabelText("模型 ID"), "example-model");
     await user.type(screen.getByLabelText("API Key"), "secret");
+    await user.clear(screen.getByLabelText("上下文窗口 Token"));
+    await user.type(
+      screen.getByLabelText("上下文窗口 Token"),
+      "1048576",
+    );
     await user.click(screen.getByRole("button", { name: "保存模型连接" }));
 
     expect(screen.getByText("…cret")).toBeInTheDocument();
@@ -84,6 +90,61 @@ describe("ModelManager", () => {
       name: "主模型",
       apiKey: "secret",
       modelId: "example-model",
+      contextWindowTokens: 1_048_576,
     });
+  });
+
+  it("切换主模型后同步清理会客厅的旧模型会话", async () => {
+    const model = {
+      id: "model-minimax",
+      name: "MiniMax-M3",
+      kind: "openai-compatible" as const,
+      baseUrl: "https://api.minimaxi.com/v1",
+      modelId: "MiniMax-M3",
+      enabled: true,
+      timeoutMs: 90_000,
+      contextWindowTokens: 1_048_576,
+      maxOutputTokens: 1_200,
+      createdAt: emptyWorkspace.updatedAt,
+      updatedAt: emptyWorkspace.updatedAt,
+      apiKeyConfigured: true,
+      apiKeyHint: "…已配置",
+    };
+    let current = {
+      ...emptyWorkspace,
+      models: [model],
+    } as AdminAgentWorkspace;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (
+          url.endsWith(`/api/admin/models/${model.id}/activate`) &&
+          init?.method === "POST"
+        ) {
+          current = { ...current, activeModelId: model.id };
+          return Response.json({
+            ok: true,
+            workspace: current,
+            message: "会客厅主模型已切换",
+          });
+        }
+        return Response.json({ ok: true, workspace: current });
+      }),
+    );
+    const changed = vi.fn();
+    window.addEventListener("ricky:model-changed", changed);
+    const user = userEvent.setup();
+    render(<ModelManager />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "设为主模型" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "当前主模型" }),
+    ).toBeDisabled();
+    expect(changed).toHaveBeenCalledOnce();
+    window.removeEventListener("ricky:model-changed", changed);
   });
 });

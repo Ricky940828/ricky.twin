@@ -8,10 +8,11 @@ import {
 } from "lucide-react";
 
 import { TargetLock } from "@/components/motion/target-lock";
-import type { PracticeLink } from "@/content/types";
+import type { PracticeLink, SitePresentation } from "@/content/types";
 
 interface PracticeSectionProps {
   links: PracticeLink[];
+  presentation?: SitePresentation["practice"];
 }
 
 const ICONS: Record<PracticeLink["icon"], LucideIcon> = {
@@ -21,7 +22,7 @@ const ICONS: Record<PracticeLink["icon"], LucideIcon> = {
   github: Code2,
 };
 
-export function PracticeSection({ links }: PracticeSectionProps) {
+export function PracticeSection({ links, presentation }: PracticeSectionProps) {
   const visibleLinks = [...links]
     .filter((item) => item.visible)
     .sort((a, b) => a.order - b.order);
@@ -33,11 +34,9 @@ export function PracticeSection({ links }: PracticeSectionProps) {
   return (
     <section className="practice-section site-section" id="practice">
       <div className="practice-section__intro">
-        <span className="eyebrow">LIVE PRACTICE · BUILD IN PUBLIC</span>
-        <h2 className="section-title">不只谈方法，也把想法做成正在运行的东西。</h2>
-        <p className="section-copy">
-          这里集中放置可访问的产品、工具和代码实践。入口与状态由后台维护，新的实践无需重写页面即可加入。
-        </p>
+        <span className="eyebrow">{presentation?.eyebrow ?? "LIVE PRACTICE · BUILD IN PUBLIC"}</span>
+        <h2 className="section-title">{presentation?.title ?? "不只谈方法，也把想法做成正在运行的东西。"}</h2>
+        <p className="section-copy">{presentation?.body ?? "这里集中放置可访问的产品、工具和代码实践。入口与状态由后台维护，新的实践无需重写页面即可加入。"}</p>
       </div>
 
       <div className="practice-grid">
@@ -75,12 +74,12 @@ export function PracticeSection({ links }: PracticeSectionProps) {
                       rel="noreferrer"
                       target="_blank"
                     >
-                      进入实践
+                      {presentation?.openCta ?? "进入实践"}
                       <ArrowUpRight aria-hidden size={17} />
                     </a>
                   ) : (
-                    <button aria-label="即将开放" disabled type="button">
-                      即将开放
+                    <button aria-label={presentation?.pendingCta ?? "即将开放"} disabled type="button">
+                      {presentation?.pendingCta ?? "即将开放"}
                     </button>
                   )}
                   <span>{item.href ? "EXTERNAL" : "LINK PENDING"}</span>

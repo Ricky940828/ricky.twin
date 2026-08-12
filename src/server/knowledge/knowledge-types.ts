@@ -32,6 +32,8 @@ export interface KnowledgeDocument {
   id: string;
   baseId: string;
   fileName: string;
+  /** 文件夹导入时的库内路径；不用于前台知识库标签。 */
+  relativePath?: string;
   title: string;
   sizeBytes: number;
   checksum: string;
@@ -40,6 +42,11 @@ export interface KnowledgeDocument {
   createdAt: string;
   updatedAt: string;
   error?: string;
+}
+
+export interface KnowledgeDocumentContent {
+  document: KnowledgeDocument;
+  content: string;
 }
 
 export interface KnowledgeChunk {
@@ -80,5 +87,6 @@ export interface IngestKnowledgeDocumentInput {
   baseId: string;
   documentId?: string;
   fileName: string;
+  relativePath?: string;
   content: string;
 }

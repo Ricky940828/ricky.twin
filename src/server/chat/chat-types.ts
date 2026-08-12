@@ -31,6 +31,7 @@ export type ChatNextAction =
 export interface ChatMeta {
   retrievalCount: number;
   latencyMs: number;
+  contextBudgetTokens?: number;
   modelName?: string;
   usage?: ModelUsage;
   knowledgeBaseNames?: string[];

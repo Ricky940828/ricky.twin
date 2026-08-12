@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { CareerStage, SiteContent } from "@/content/types";
+import { getSitePresentation } from "@/content/site-presentation";
 
 import {
   EditorPanel,
@@ -33,9 +34,11 @@ function newStage(): CareerStage {
 export function CareerEditor({
   content,
   onChange,
+  onPanelChange,
 }: {
   content: SiteContent;
   onChange: (content: SiteContent) => void;
+  onPanelChange?: (panelId: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState(content.career[0]?.id);
   const selectedIndex = Math.max(
@@ -43,6 +46,18 @@ export function CareerEditor({
     content.career.findIndex((stage) => stage.id === selectedId),
   );
   const stage = content.career[selectedIndex];
+  const presentation = getSitePresentation(content.presentation);
+  const updateCareerCopy = (
+    field: keyof typeof presentation.career,
+    value: string,
+  ) =>
+    onChange({
+      ...content,
+      presentation: {
+        ...presentation,
+        career: { ...presentation.career, [field]: value },
+      },
+    });
 
   if (!stage) {
     return null;
@@ -73,6 +88,47 @@ export function CareerEditor({
   return (
     <div className="admin-editor-stack">
       <EditorPanel
+        description="当前对外展示文案均可调整，不改变职业阶段数据和动画逻辑。"
+        onActivate={onPanelChange}
+        panelId="career-intro"
+        title="职业路线板块文案"
+      >
+        <TextField
+          label="职业路线眉题"
+          onChange={(event) => updateCareerCopy("eyebrow", event.target.value)}
+          value={presentation.career.eyebrow}
+        />
+        <TextField
+          label="职业路线标题"
+          onChange={(event) => updateCareerCopy("title", event.target.value)}
+          value={presentation.career.title}
+        />
+        <TextAreaField
+          label="职业路线说明"
+          onChange={(event) => updateCareerCopy("body", event.target.value)}
+          rows={4}
+          value={presentation.career.body}
+        />
+        <div className="admin-form-grid is-two">
+          <TextField
+            label="下一阶段按钮前缀"
+            onChange={(event) => updateCareerCopy("nextStagePrefix", event.target.value)}
+            value={presentation.career.nextStagePrefix}
+          />
+          <TextField
+            label="最终阶段项目按钮"
+            onChange={(event) => updateCareerCopy("projectsCta", event.target.value)}
+            value={presentation.career.projectsCta}
+          />
+          <TextField
+            label="雷达图说明"
+            onChange={(event) => updateCareerCopy("radarCaption", event.target.value)}
+            value={presentation.career.radarCaption}
+          />
+        </div>
+      </EditorPanel>
+
+      <EditorPanel
         action={
           <button
             className="admin-button is-secondary"
@@ -90,6 +146,8 @@ export function CareerEditor({
           </button>
         }
         description="阶段顺序同时决定人物行走路线和能力雷达增量。"
+        onActivate={onPanelChange}
+        panelId="career-stages"
         title="职业路线"
       >
         <label className="admin-field">
@@ -182,6 +240,8 @@ export function CareerEditor({
 
       <EditorPanel
         description="1 接触、2 形成、3 深化、4 体系化。"
+        onActivate={onPanelChange}
+        panelId="career-radar"
         title="这一阶段的能力覆盖"
       >
         <div className="admin-form-grid is-two">

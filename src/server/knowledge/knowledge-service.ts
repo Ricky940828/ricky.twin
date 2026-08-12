@@ -6,6 +6,7 @@ import {
 import type {
   CreateKnowledgeBaseInput,
   IngestKnowledgeDocumentInput,
+  KnowledgeDocument,
   KnowledgeWorkspace,
   UpdateKnowledgeBaseInput,
 } from "./knowledge-types";
@@ -19,6 +20,14 @@ export type AdminKnowledgeResponse =
   | { ok: true; workspace: AdminKnowledgeWorkspace }
   | { ok: false; message: string };
 
+export type AdminKnowledgeDocumentResponse =
+  | {
+      ok: true;
+      document: KnowledgeDocument;
+      content: string;
+    }
+  | { ok: false; message: string };
+
 function adminWorkspace(
   workspace: KnowledgeWorkspace,
 ): AdminKnowledgeWorkspace {
@@ -30,7 +39,7 @@ function adminWorkspace(
   });
 }
 
-function failure(error: unknown): AdminKnowledgeResponse {
+function failure(error: unknown): { ok: false; message: string } {
   if (error instanceof KnowledgeStoreError) {
     return { ok: false, message: error.message };
   }
@@ -52,8 +61,17 @@ export interface KnowledgeService {
     id: string,
     value: unknown,
   ): Promise<AdminKnowledgeResponse>;
+  deleteBase(id: string): Promise<AdminKnowledgeResponse>;
   ingestDocument(
     input: IngestKnowledgeDocumentInput,
+  ): Promise<AdminKnowledgeResponse>;
+  getDocumentContent(
+    baseId: string,
+    documentId: string,
+  ): Promise<AdminKnowledgeDocumentResponse>;
+  deleteDocument(
+    baseId: string,
+    documentId: string,
   ): Promise<AdminKnowledgeResponse>;
 }
 
@@ -125,12 +143,49 @@ export function createKnowledgeService(
       }
     },
 
+    async deleteBase(id) {
+      try {
+        return {
+          ok: true,
+          workspace: adminWorkspace(await store.deleteBase(id)),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+
     async ingestDocument(input) {
       try {
         return {
           ok: true,
           workspace: adminWorkspace(
             await store.ingestDocument(input),
+          ),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+
+    async getDocumentContent(baseId, documentId) {
+      try {
+        const source = await store.getDocumentContent(baseId, documentId);
+        return {
+          ok: true,
+          document: source.document,
+          content: source.content,
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+
+    async deleteDocument(baseId, documentId) {
+      try {
+        return {
+          ok: true,
+          workspace: adminWorkspace(
+            await store.deleteDocument(baseId, documentId),
           ),
         };
       } catch (error) {

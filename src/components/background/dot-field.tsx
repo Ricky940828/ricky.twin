@@ -5,7 +5,11 @@ import { useEffect, useRef } from "react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/cn";
 
-import { computeDotOffset, type DotPoint } from "./dot-field-math";
+import {
+  computeDotOffset,
+  computePulseDecay,
+  type DotPoint,
+} from "./dot-field-math";
 
 interface DotFieldProps {
   density?: "normal" | "subtle";
@@ -15,6 +19,13 @@ interface DotFieldProps {
 interface AnimatedDot extends DotPoint {
   offsetX: number;
   offsetY: number;
+  velocityX: number;
+  velocityY: number;
+}
+
+interface PointerPulse extends DotPoint {
+  createdAt: number;
+  strength: number;
 }
 
 export function DotField({
@@ -35,11 +46,22 @@ export function DotField({
       return;
     }
 
-    const spacing = density === "subtle" ? 52 : 38;
-    const pointer = { x: -10_000, y: -10_000, speed: 0 };
+    const spacing = density === "subtle" ? 34 : 28;
+    const pointer = {
+      x: -10_000,
+      y: -10_000,
+      engagement: 0,
+      targetEngagement: 0,
+    };
     const dots: AnimatedDot[] = [];
+    const pulses: PointerPulse[] = [];
     let animationFrame = 0;
-    let previousPointer = { x: pointer.x, y: pointer.y, time: performance.now() };
+    let previousPointer = {
+      x: pointer.x,
+      y: pointer.y,
+      time: performance.now(),
+    };
+    let lastPulse = 0;
     let width = 0;
     let height = 0;
     let devicePixelRatio = 1;
@@ -66,28 +88,94 @@ export function DotField({
       const yOffset = spacing / 2;
       for (let y = yOffset; y < height; y += spacing) {
         for (let x = xOffset; x < width; x += spacing) {
-          dots.push({ x, y, offsetX: 0, offsetY: 0 });
+          dots.push({
+            x,
+            y,
+            offsetX: 0,
+            offsetY: 0,
+            velocityX: 0,
+            velocityY: 0,
+          });
         }
       }
     };
 
-    const draw = () => {
+    const draw = (timestamp = performance.now()) => {
       context.clearRect(0, 0, width, height);
-      const baseAlpha = density === "subtle" ? 0.13 : 0.22;
+      const baseAlpha = density === "subtle" ? 0.075 : 0.12;
+      const waveAmplitude = density === "subtle" ? 1.5 : 2.6;
+      const pulseDuration = 1650;
+      const time = timestamp / 1000;
+
+      pointer.engagement +=
+        (pointer.targetEngagement - pointer.engagement) * 0.13;
+      pointer.targetEngagement *= 0.91;
+      while (
+        pulses.length > 0 &&
+        timestamp - pulses[0].createdAt >= pulseDuration
+      ) {
+        pulses.shift();
+      }
 
       for (const dot of dots) {
-        const offset = computeDotOffset(dot, pointer, {
-          radius: 168,
-          maxDisplacement: density === "subtle" ? 11 : 17,
-        });
+        const pointerOffset = computeDotOffset(
+          dot,
+          {
+            x: pointer.x,
+            y: pointer.y,
+            speed: pointer.engagement,
+          },
+          {
+            radius: 172,
+            maxDisplacement: density === "subtle" ? 8 : 13,
+          },
+        );
+        let desiredX =
+          Math.cos(dot.y * 0.022 + time * 0.58) *
+          waveAmplitude *
+          0.48;
+        let desiredY =
+          Math.sin(dot.x * 0.024 + time * 0.72) * waveAmplitude;
+        let intensity = pointerOffset.intensity;
+        desiredX += pointerOffset.x;
+        desiredY += pointerOffset.y;
 
-        dot.offsetX += (offset.x - dot.offsetX) * 0.16;
-        dot.offsetY += (offset.y - dot.offsetY) * 0.16;
+        for (const pulse of pulses) {
+          const decay = computePulseDecay(
+            timestamp - pulse.createdAt,
+            pulseDuration,
+          );
+          if (decay <= 0) {
+            continue;
+          }
+          const pulseOffset = computeDotOffset(
+            dot,
+            {
+              x: pulse.x,
+              y: pulse.y,
+              speed: pulse.strength * decay,
+            },
+            {
+              radius: 138,
+              maxDisplacement: density === "subtle" ? 5 : 9,
+            },
+          );
+          desiredX += pulseOffset.x;
+          desiredY += pulseOffset.y;
+          intensity = Math.max(intensity, pulseOffset.intensity);
+        }
 
-        const radius = 1.05 + offset.intensity * 0.7;
+        dot.velocityX += (desiredX - dot.offsetX) * 0.11;
+        dot.velocityY += (desiredY - dot.offsetY) * 0.11;
+        dot.velocityX *= 0.82;
+        dot.velocityY *= 0.82;
+        dot.offsetX += dot.velocityX;
+        dot.offsetY += dot.velocityY;
+
+        const radius = 0.9 + intensity * 0.85;
         context.beginPath();
-        context.fillStyle = `rgba(176, 112, 255, ${
-          baseAlpha + offset.intensity * 0.34
+        context.fillStyle = `rgba(184, 123, 255, ${
+          baseAlpha + intensity * 0.52
         })`;
         context.arc(
           dot.x + dot.offsetX,
@@ -99,7 +187,6 @@ export function DotField({
         context.fill();
       }
 
-      pointer.speed *= 0.9;
       if (!reducedMotion) {
         animationFrame = window.requestAnimationFrame(draw);
       }
@@ -115,14 +202,33 @@ export function DotField({
 
       pointer.x = event.clientX;
       pointer.y = event.clientY;
-      pointer.speed = Math.max(0.28, Math.min(1, (distance / elapsed) * 0.7));
+      const speed = Math.max(
+        0.24,
+        Math.min(1, (distance / elapsed) * 0.72),
+      );
+      pointer.targetEngagement = Math.max(
+        pointer.targetEngagement,
+        speed,
+      );
+      if (now - lastPulse >= 42 || distance >= 18) {
+        pulses.push({
+          x: event.clientX,
+          y: event.clientY,
+          createdAt: now,
+          strength: speed,
+        });
+        if (pulses.length > 22) {
+          pulses.shift();
+        }
+        lastPulse = now;
+      }
       previousPointer = { x: event.clientX, y: event.clientY, time: now };
     };
 
     const handlePointerLeave = () => {
       pointer.x = -10_000;
       pointer.y = -10_000;
-      pointer.speed = 0;
+      pointer.targetEngagement = 0;
     };
 
     rebuildGrid();

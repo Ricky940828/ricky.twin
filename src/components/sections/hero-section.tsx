@@ -13,9 +13,11 @@ import { type ComponentType } from "react";
 
 import { PressureTitle } from "@/components/motion/pressure-title";
 import { TargetLock } from "@/components/motion/target-lock";
+import { DEFAULT_SITE_PRESENTATION } from "@/content/site-presentation";
 import type {
   HeroContent,
   PracticeLink,
+  SitePresentation,
   SiteSectionId,
 } from "@/content/types";
 
@@ -23,6 +25,7 @@ interface HeroSectionProps {
   content: HeroContent;
   practiceLinks: PracticeLink[];
   onNavigate: (section: SiteSectionId) => void;
+  presentation?: SitePresentation;
 }
 
 const PRACTICE_ICONS: Record<
@@ -86,6 +89,7 @@ function PracticeDockItem({ item }: { item: PracticeLink }) {
 
 export function HeroSection({
   content,
+  presentation = DEFAULT_SITE_PRESENTATION,
   practiceLinks,
   onNavigate,
 }: HeroSectionProps) {
@@ -132,18 +136,12 @@ export function HeroSection({
           </div>
 
           <div className="hero-proof">
-            <span>
-              <strong>7年+</strong>
-              信贷行业
-            </span>
-            <span>
-              <strong>4段</strong>
-              职业路线
-            </span>
-            <span>
-              <strong>复合</strong>
-              金融 × AI
-            </span>
+            {presentation.heroProof.map((proof) => (
+              <span key={`${proof.value}-${proof.label}`}>
+                <strong>{proof.value}</strong>
+                {proof.label}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -152,8 +150,8 @@ export function HeroSection({
 
           <div aria-label="实践项目快捷入口" className="practice-dock">
             <div className="practice-dock__heading">
-              <span>LIVE PRACTICE</span>
-              <small>实践入口</small>
+              <span>{presentation.heroPracticeEyebrow}</span>
+              <small>{presentation.heroPracticeLabel}</small>
             </div>
             <div className="practice-dock__items">
               {featuredPractice.map((item) => (
@@ -166,7 +164,7 @@ export function HeroSection({
 
       <div aria-hidden="true" className="hero-scroll-hint">
         <span />
-        SCROLL TO WALK THE CAREER ROUTE
+        {presentation.heroScrollHint}
       </div>
     </section>
   );

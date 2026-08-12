@@ -7,3 +7,5 @@ test-results
 .DS_Store
 .serena
 .ricky-twin-data
+.env*
+!.env.example

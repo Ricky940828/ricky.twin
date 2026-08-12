@@ -8,12 +8,18 @@ import type {
 } from "@/components/admin/live-preview";
 import { SectionRenderer } from "@/components/layout/section-renderer";
 import type { SiteContent } from "@/content/types";
+import type { AdminPreviewFocusRequest } from "@/components/admin/content-editor-config";
 import type { AdminContentResponse } from "@/server/content/content-service";
 import { validateSiteContent } from "@/server/content/content-validation";
 
 type PreviewState =
   | { status: "loading" }
-  | { status: "ready"; content: SiteContent; replayKey: number }
+  | {
+      status: "ready";
+      content: SiteContent;
+      replayKey: number;
+      focus?: AdminPreviewFocusRequest;
+    }
   | { status: "error"; message: string };
 
 function isPreviewMessage(
@@ -98,6 +104,7 @@ export function PreviewClient() {
         status: "ready",
         content: validation.value,
         replayKey: event.data.replayKey,
+        focus: event.data.focus,
       });
     };
 
@@ -136,6 +143,7 @@ export function PreviewClient() {
     <SectionRenderer
       key={preview.replayKey}
       mode="preview"
+      previewFocus={preview.focus}
       site={preview.content}
     />
   );

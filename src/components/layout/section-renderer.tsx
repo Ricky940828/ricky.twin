@@ -19,16 +19,25 @@ import { LoungeSection } from "@/components/sections/lounge/lounge-section";
 import { PracticeSection } from "@/components/sections/practice-section";
 import { ProjectsSection } from "@/components/sections/projects/projects-section";
 import type { SiteContent, SiteSectionId } from "@/content/types";
+import type { AdminPreviewFocusRequest } from "@/components/admin/content-editor-config";
+import { getSitePresentation } from "@/content/site-presentation";
+import { ensureGsapPlugins, ScrollTrigger } from "@/lib/gsap-client";
 import { getEnabledSectionIds } from "@/lib/section-navigation";
+import {
+  DIRECT_NAVIGATION_EVENT,
+  type DirectNavigationDetail,
+} from "@/lib/direct-navigation";
 
 import { SiteFooter } from "./site-footer";
 import { SiteHeader } from "./site-header";
+import { resolveActiveSection } from "./section-scrollspy";
 
 type RenderMode = "published" | "preview";
 
 interface SectionRendererProps {
   site: SiteContent;
   mode?: RenderMode;
+  previewFocus?: AdminPreviewFocusRequest;
 }
 
 interface SectionAdapterProps {
@@ -41,6 +50,7 @@ const sectionComponents = {
     <HeroSection
       content={site.hero}
       onNavigate={onNavigate}
+      presentation={getSitePresentation(site.presentation)}
       practiceLinks={site.practice}
     />
   ),
@@ -48,17 +58,28 @@ const sectionComponents = {
     <CareerSection
       axes={site.capabilityAxes}
       onNavigateProjects={() => onNavigate("projects")}
+      presentation={getSitePresentation(site.presentation).career}
       stages={site.career}
     />
   ),
   projects: ({ site }: SectionAdapterProps) => (
-    <ProjectsSection projects={site.projects} />
+    <ProjectsSection
+      capabilityAxes={site.capabilityAxes}
+      presentation={getSitePresentation(site.presentation).projects}
+      projects={site.projects}
+    />
   ),
   practice: ({ site }: SectionAdapterProps) => (
-    <PracticeSection links={site.practice} />
+    <PracticeSection
+      links={site.practice}
+      presentation={getSitePresentation(site.presentation).practice}
+    />
   ),
   lounge: ({ site }: SectionAdapterProps) => (
-    <LoungeSection content={site.lounge} />
+    <LoungeSection
+      content={site.lounge}
+      presentation={getSitePresentation(site.presentation).lounge}
+    />
   ),
 } satisfies Record<
   SiteSectionId,
@@ -75,16 +96,31 @@ const NEXT_CHARACTER: Partial<Record<SiteSectionId, string>> = {
 export function SectionRenderer({
   site,
   mode = "published",
+  previewFocus,
 }: SectionRendererProps) {
   const enabledSectionIds = useMemo(
     () => getEnabledSectionIds(site),
     [site],
   );
+  const sectionLayoutKey = enabledSectionIds.join("|");
   const [observedSection, setObservedSection] = useState<SiteSectionId>(
     enabledSectionIds[0] ?? "hero",
   );
   const [transitioning, setTransitioning] = useState(false);
   const transitionTimerRef = useRef<number | null>(null);
+  const layoutRefreshFrameRef = useRef<number | null>(null);
+  const previewFocusRequestId = previewFocus?.requestId;
+  const previewFocusSection = previewFocus?.section;
+  const previewFocusSelector = previewFocus?.selector;
+  const identityPreview =
+    mode === "preview"
+      ? previewFocusSection === "identity-card" && previewFocusRequestId
+        ? {
+            face: previewFocus.identityFace ?? ("front" as const),
+            requestId: previewFocusRequestId,
+          }
+        : null
+      : undefined;
   const activeSection = enabledSectionIds.includes(observedSection)
     ? observedSection
     : (enabledSectionIds[0] ?? "hero");
@@ -109,12 +145,14 @@ export function SectionRenderer({
     if (typeof element?.scrollIntoView === "function") {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    setObservedSection(section);
   }, []);
 
   const navigate = useCallback(
     (section: SiteSectionId) => {
       if (section !== "lounge") {
+        if (section === "projects") {
+          window.dispatchEvent(new Event("ricky:projects-enter"));
+        }
         scrollToSection(section);
         return;
       }
@@ -132,6 +170,55 @@ export function SectionRenderer({
     [scrollToSection],
   );
 
+  const jumpToSection = useCallback((section: SiteSectionId) => {
+    const element = document.getElementById(section);
+    if (!element) {
+      return;
+    }
+
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+    setTransitioning(false);
+    setObservedSection(section);
+
+    if (section === "projects") {
+      window.dispatchEvent(new Event("ricky:projects-enter"));
+    }
+
+    const header = document.querySelector<HTMLElement>(".site-header");
+    const headerOffset = Math.max(72, (header?.offsetHeight ?? 0) + 18);
+    const targetTop = Math.max(
+      0,
+      window.scrollY + element.getBoundingClientRect().top - headerOffset,
+    );
+    const root = document.documentElement;
+    const previousBehavior = root.style.getPropertyValue("scroll-behavior");
+    const previousPriority = root.style.getPropertyPriority("scroll-behavior");
+
+    root.style.setProperty("scroll-behavior", "auto", "important");
+    try {
+      window.scrollTo({ behavior: "auto", top: targetTop });
+      ScrollTrigger.update();
+      window.dispatchEvent(
+        new CustomEvent<DirectNavigationDetail>(DIRECT_NAVIGATION_EVENT, {
+          detail: { section },
+        }),
+      );
+    } finally {
+      if (previousBehavior) {
+        root.style.setProperty(
+          "scroll-behavior",
+          previousBehavior,
+          previousPriority,
+        );
+      } else {
+        root.style.removeProperty("scroll-behavior");
+      }
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       if (transitionTimerRef.current !== null) {
@@ -141,38 +228,102 @@ export function SectionRenderer({
   }, []);
 
   useEffect(() => {
-    if (!("IntersectionObserver" in window)) {
+    let frame = 0;
+    const updateObservedSection = () => {
+      frame = 0;
+      const header = document.querySelector<HTMLElement>(".site-header");
+      const anchor = Math.max(84, (header?.offsetHeight ?? 0) + 18);
+      const metrics = enabledSectionIds.flatMap((id) => {
+        const section = document.getElementById(id);
+        return section
+          ? [{ id, top: section.getBoundingClientRect().top }]
+          : [];
+      });
+      setObservedSection((current) =>
+        resolveActiveSection(
+          metrics,
+          anchor,
+          enabledSectionIds.includes(current)
+            ? current
+            : (enabledSectionIds[0] ?? "hero"),
+        ),
+      );
+    };
+    const requestUpdate = () => {
+      if (!frame) {
+        frame = window.requestAnimationFrame(updateObservedSection);
+      }
+    };
+
+    requestUpdate();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [enabledSectionIds, sectionLayoutKey]);
+
+  useEffect(() => {
+    ensureGsapPlugins();
+    const firstFrame = window.requestAnimationFrame(() => {
+      const secondFrame = window.requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+        layoutRefreshFrameRef.current = null;
+      });
+      layoutRefreshFrameRef.current = secondFrame;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (layoutRefreshFrameRef.current !== null) {
+        window.cancelAnimationFrame(layoutRefreshFrameRef.current);
+        layoutRefreshFrameRef.current = null;
+      }
+    };
+  }, [sectionLayoutKey]);
+
+  useEffect(() => {
+    if (
+      mode !== "preview" ||
+      !previewFocusRequestId ||
+      !previewFocusSection ||
+      previewFocusSection === "identity-card"
+    ) {
       return;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (left, right) =>
-              right.intersectionRatio - left.intersectionRatio,
-          )[0];
-        const sectionId = visible?.target.id as SiteSectionId | undefined;
-        if (sectionId && enabledSectionIds.includes(sectionId)) {
-          setObservedSection(sectionId);
-        }
-      },
-      {
-        rootMargin: "-22% 0px -60%",
-        threshold: [0.08, 0.25, 0.5, 0.75],
-      },
-    );
+    const sectionRoot =
+      previewFocusSection === "footer"
+        ? document.querySelector<HTMLElement>(".site-footer")
+        : document.getElementById(previewFocusSection);
+    const selectedTarget = previewFocusSelector
+      ? document.querySelector<HTMLElement>(previewFocusSelector)
+      : null;
+    const target = selectedTarget ?? sectionRoot;
+    if (!target) {
+      return;
+    }
 
-    enabledSectionIds.forEach((id) => {
-      const section = document.getElementById(id);
-      if (section) {
-        observer.observe(section);
-      }
-    });
+    target.scrollIntoView({ behavior: "auto", block: "center" });
+    target.classList.add("is-admin-preview-focus");
+    const timer = window.setTimeout(() => {
+      target.classList.remove("is-admin-preview-focus");
+    }, 900);
 
-    return () => observer.disconnect();
-  }, [enabledSectionIds]);
+    return () => {
+      window.clearTimeout(timer);
+      target.classList.remove("is-admin-preview-focus");
+    };
+  }, [
+    mode,
+    previewFocusRequestId,
+    previewFocusSection,
+    previewFocusSelector,
+  ]);
 
   useEffect(() => {
     const stem = NEXT_CHARACTER[activeSection];
@@ -203,11 +354,15 @@ export function SectionRenderer({
     >
       <VisitTracker enabled={mode === "published"} />
       <DotField />
-      <PersistentCharacter />
+      <PersistentCharacter
+        identityCard={site.identityCard}
+        identityPreview={identityPreview}
+      />
       <SiteHeader
         activeSection={activeSection}
         brand={site.brand}
-        onNavigate={navigate}
+        ctaLabel={getSitePresentation(site.presentation).headerCta}
+        onNavigate={jumpToSection}
         sections={site.sections}
       />
 
@@ -222,7 +377,11 @@ export function SectionRenderer({
         {enabledSectionIds.map((sectionId) => {
           const Section = sectionComponents[sectionId];
           return (
-            <Section key={sectionId} onNavigate={navigate} site={site} />
+            <Section
+              key={`${sectionLayoutKey}:${sectionId}`}
+              onNavigate={navigate}
+              site={site}
+            />
           );
         })}
       </main>
@@ -231,6 +390,7 @@ export function SectionRenderer({
         brand={site.brand}
         content={site.footer}
         onNavigate={navigate}
+        presentation={getSitePresentation(site.presentation).footer}
       />
 
       {transitioning ? (

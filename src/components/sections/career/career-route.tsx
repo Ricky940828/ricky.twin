@@ -2,9 +2,14 @@
 
 import { useGSAP } from "@gsap/react";
 import { ArrowRight } from "lucide-react";
-import { useCallback, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type CSSProperties,
+} from "react";
 
-import type { CareerStage } from "@/content/types";
+import type { CareerStage, SitePresentation } from "@/content/types";
 import {
   CAREER_PROGRESS_EVENT,
   type CareerProgressDetail,
@@ -16,32 +21,41 @@ import {
 } from "@/lib/gsap-client";
 
 import { getStageIndex } from "./career-model";
+import {
+  CAREER_ROUTE_VIEWBOX,
+  getCareerNodePositions,
+  getCareerRoutePath,
+} from "./career-route-geometry";
 
 interface CareerRouteProps {
   stages: CareerStage[];
   activeIndex: number;
   onStageChange: (index: number) => void;
   onNavigateProjects: () => void;
+  presentation?: SitePresentation["career"];
 }
-
-const NODE_POSITIONS = [
-  { x: 68, y: 245 },
-  { x: 270, y: 155 },
-  { x: 484, y: 235 },
-  { x: 688, y: 145 },
-];
 
 export function CareerRoute({
   stages,
   activeIndex,
   onStageChange,
   onNavigateProjects,
+  presentation,
 }: CareerRouteProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const progressPathRef = useRef<SVGPathElement>(null);
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const guideTweenRef = useRef<gsap.core.Tween | null>(null);
+  const stagesLengthRef = useRef(stages.length);
+  const activeIndexRef = useRef(activeIndex);
+  const onStageChangeRef = useRef(onStageChange);
+
+  useEffect(() => {
+    stagesLengthRef.current = stages.length;
+    activeIndexRef.current = activeIndex;
+    onStageChangeRef.current = onStageChange;
+  }, [activeIndex, onStageChange, stages.length]);
 
   const setPathProgress = useCallback((progress: number) => {
     const path = pathRef.current;
@@ -95,7 +109,9 @@ export function CareerRoute({
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           setPathProgress(self.progress);
-          onStageChange(getStageIndex(self.progress, stages.length));
+          onStageChangeRef.current(
+            getStageIndex(self.progress, stagesLengthRef.current),
+          );
         },
         onRefresh: (self) => {
           setPathProgress(self.progress);
@@ -132,9 +148,22 @@ export function CareerRoute({
       };
     },
     {
-      dependencies: [onStageChange, setPathProgress, stages.length],
+      dependencies: [setPathProgress],
     },
   );
+
+  useEffect(() => {
+    const progress =
+      scrollTriggerRef.current?.progress ??
+      activeIndexRef.current / Math.max(1, stages.length - 1);
+    setPathProgress(progress);
+    onStageChangeRef.current(getStageIndex(progress, stages.length));
+
+    const frame = window.requestAnimationFrame(() => {
+      ScrollTrigger.refresh();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [stages.length, setPathProgress]);
 
   const guideToStage = (nextIndex: number) => {
     const boundedIndex = Math.min(stages.length - 1, Math.max(0, nextIndex));
@@ -183,24 +212,33 @@ export function CareerRoute({
 
   const stage = stages[activeIndex];
   const nextStage = stages[activeIndex + 1];
+  const nodePositions = getCareerNodePositions(stages.length);
+  const routePath = getCareerRoutePath();
 
   return (
     <div className="career-route">
-      <div ref={mapRef} className="career-route__map">
+      <div
+        ref={mapRef}
+        className="career-route__map"
+        style={{
+          "--career-stage-count": stages.length,
+        } as CSSProperties}
+      >
         <svg
           aria-hidden="true"
           className="career-route__path"
-          viewBox="0 0 760 360"
+          preserveAspectRatio="none"
+          viewBox={`0 0 ${CAREER_ROUTE_VIEWBOX.width} ${CAREER_ROUTE_VIEWBOX.height}`}
         >
           <path
             ref={pathRef}
             data-career-path="true"
-            d="M68 245 C150 258 192 150 270 155 C350 160 400 250 484 235 C570 220 610 140 688 145"
+            d={routePath}
           />
           <path
             ref={progressPathRef}
             className="career-route__path-progress"
-            d="M68 245 C150 258 192 150 270 155 C350 160 400 250 484 235 C570 220 610 140 688 145"
+            d={routePath}
           />
         </svg>
 
@@ -213,8 +251,12 @@ export function CareerRoute({
             data-complete={activeIndex >= index ? "true" : "false"}
             onClick={() => guideToStage(index)}
             style={{
-              left: `${(NODE_POSITIONS[index]?.x / 760) * 100}%`,
-              top: `${(NODE_POSITIONS[index]?.y / 360) * 100}%`,
+              left: `${
+                (nodePositions[index].x / CAREER_ROUTE_VIEWBOX.width) * 100
+              }%`,
+              top: `${
+                (nodePositions[index].y / CAREER_ROUTE_VIEWBOX.height) * 100
+              }%`,
             }}
             type="button"
           >
@@ -222,6 +264,27 @@ export function CareerRoute({
             <span>{item.publicBrand}</span>
           </button>
         ))}
+
+        <div aria-label="职业阶段时间线" className="career-route__timeline">
+          <span aria-hidden="true" className="career-route__timeline-line" />
+          {stages.map((item, index) => (
+            <button
+              key={item.id}
+              aria-label={`按时间查看${item.publicBrand}阶段`}
+              data-active={activeIndex === index ? "true" : "false"}
+              onClick={() => guideToStage(index)}
+              style={{
+                left: `${
+                  (nodePositions[index].x / CAREER_ROUTE_VIEWBOX.width) * 100
+                }%`,
+              }}
+              type="button"
+            >
+              <i aria-hidden="true" />
+              <span>{item.period}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="career-route__mobile-nodes">
@@ -270,8 +333,8 @@ export function CareerRoute({
           type="button"
         >
           {nextStage
-            ? `下一站：${nextStage.publicBrand} →`
-            : "查看代表项目 →"}
+            ? `${presentation?.nextStagePrefix ?? "下一站："}${nextStage.publicBrand} →`
+            : (presentation?.projectsCta ?? "查看代表项目 →")}
           <ArrowRight aria-hidden size={16} />
         </button>
       </article>

@@ -30,4 +30,21 @@ describe("lounge model", () => {
     expect(first.pulseKey).toBe(1);
     expect(second.pulseKey).toBe(1);
   });
+
+  it("clears stale conversation history after the active model changes", () => {
+    const submitted = loungeReducer(initialLoungeState, {
+      type: "submit",
+      question: "你是谁？",
+    });
+    const resolved = loungeReducer(submitted, {
+      type: "resolve",
+      reply: { answer: "我是 Kimi。" },
+      mode: "live",
+    });
+
+    const reset = loungeReducer(resolved, { type: "reset" });
+
+    expect(reset).toEqual(initialLoungeState);
+    expect(reset.messages).not.toBe(initialLoungeState.messages);
+  });
 });

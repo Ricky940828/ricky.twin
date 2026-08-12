@@ -20,6 +20,18 @@ export interface DotOffset {
 
 const ZERO_OFFSET: DotOffset = { x: 0, y: 0, intensity: 0 };
 
+export function computePulseDecay(age: number, duration: number) {
+  if (duration <= 0 || age >= duration) {
+    return 0;
+  }
+  if (age <= 0) {
+    return 1;
+  }
+
+  const remaining = 1 - age / duration;
+  return remaining * remaining * (3 - 2 * remaining);
+}
+
 export function computeDotOffset(
   dot: DotPoint,
   pointer: DotPointer,

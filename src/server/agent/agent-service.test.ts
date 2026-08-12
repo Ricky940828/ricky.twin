@@ -25,6 +25,11 @@ function workspace(): AdminAgentWorkspace {
     },
     tools: [],
     knowledgeBaseIds: [],
+    retrieval: {
+      contextBudgetMode: "automatic",
+      customContextTokens: 16_000,
+      maxRetrievedChunks: 12,
+    },
     usage: {
       anonymousPerMinute: 4,
       anonymousDailyQuestions: 20,
@@ -91,6 +96,7 @@ describe("agent service", () => {
       apiKey: "secret",
       enabled: true,
       timeoutMs: 10_000,
+      contextWindowTokens: 128_000,
       maxOutputTokens: 800,
       createdAt: "2026-07-30T00:00:00.000Z",
       updatedAt: "2026-07-30T00:00:00.000Z",
@@ -98,6 +104,8 @@ describe("agent service", () => {
     vi.mocked(store.getResolvedModel).mockResolvedValue(model);
     const invoke = vi.fn(async () => ({
       text: "OK",
+      providerModelId: "provider-model-actual",
+      providerRequestId: "request-1234567890",
       usage: {
         promptTokens: 2,
         completionTokens: 1,
@@ -112,7 +120,8 @@ describe("agent service", () => {
     expect(invoke).toHaveBeenCalledOnce();
     expect(store.recordModelTest).toHaveBeenCalledWith("model-1", {
       ok: true,
-      message: "连接成功 · 模型返回：OK",
+      message:
+        "连接成功 · 实际模型：provider-model-actual · 请求 t-1234567890",
     });
   });
 
@@ -127,6 +136,7 @@ describe("agent service", () => {
       apiKey: "secret",
       enabled: true,
       timeoutMs: 10_000,
+      contextWindowTokens: 128_000,
       maxOutputTokens: 800,
       createdAt: "2026-07-30T00:00:00.000Z",
       updatedAt: "2026-07-30T00:00:00.000Z",

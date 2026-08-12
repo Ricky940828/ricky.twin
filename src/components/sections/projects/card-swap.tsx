@@ -4,11 +4,12 @@ import { useGSAP } from "@gsap/react";
 import {
   useRef,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
 } from "react";
 
 import { TargetLock } from "@/components/motion/target-lock";
-import type { ProjectTheme } from "@/content/types";
+import type { ProjectTheme, SitePresentation } from "@/content/types";
 import { gsap } from "@/lib/gsap-client";
 
 interface CardSwapProps {
@@ -16,6 +17,7 @@ interface CardSwapProps {
   activeIndex: number;
   onChange: (index: number) => void;
   onOpen: (project: ProjectTheme) => void;
+  presentation?: SitePresentation["projects"];
 }
 
 const CARD_STEP_X = 42;
@@ -27,6 +29,7 @@ interface PointerDrag {
   startY: number;
   deltaX: number;
   deltaY: number;
+  captured: boolean;
 }
 
 function getVisibleProjects(projects: ProjectTheme[], activeIndex: number) {
@@ -41,11 +44,11 @@ export function CardSwap({
   activeIndex,
   onChange,
   onOpen,
+  presentation,
 }: CardSwapProps) {
   const stackRef = useRef<HTMLDivElement>(null);
   const previousIndexRef = useRef(activeIndex);
   const dragRef = useRef<PointerDrag | null>(null);
-  const suppressClickRef = useRef(false);
   const visibleProjects = getVisibleProjects(projects, activeIndex);
 
   useGSAP(
@@ -177,9 +180,9 @@ export function CardSwap({
       startY: event.clientY,
       deltaX: 0,
       deltaY: 0,
+      captured: false,
     };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    event.currentTarget.dataset.dragging = "true";
+    event.currentTarget.dataset.dragging = "false";
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -189,6 +192,14 @@ export function CardSwap({
     }
     drag.deltaX = event.clientX - drag.startX;
     drag.deltaY = event.clientY - drag.startY;
+    if (!drag.captured) {
+      if (Math.hypot(drag.deltaX, drag.deltaY) <= 8) {
+        return;
+      }
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      drag.captured = true;
+      event.currentTarget.dataset.dragging = "true";
+    }
     const card = activeCard();
     if (!card) {
       return;
@@ -210,12 +221,18 @@ export function CardSwap({
       return;
     }
 
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (
+      drag.captured &&
+      event.currentTarget.hasPointerCapture?.(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
     event.currentTarget.dataset.dragging = "false";
     dragRef.current = null;
 
-    const moved = Math.hypot(drag.deltaX, drag.deltaY);
-    suppressClickRef.current = moved > 8;
+    if (!drag.captured) {
+      return;
+    }
     if (!cancelled && Math.abs(drag.deltaX) >= 64) {
       changeBy(drag.deltaX < 0 ? 1 : -1);
       return;
@@ -239,34 +256,43 @@ export function CardSwap({
       {visibleProjects.map((project, layer) => {
         const index = projects.findIndex((item) => item.id === project.id);
         const isActive = index === activeIndex;
+        const activate = () => {
+          if (isActive) {
+            onOpen(project);
+          } else {
+            onChange(index);
+          }
+        };
         const card = (
-          <button
+          <article
             aria-label={
               isActive
                 ? `打开项目详情：${project.title}`
                 : `选择项目：${project.title}`
             }
             className="project-card"
+            data-active={isActive ? "true" : "false"}
             data-layer={layer}
             data-project-card
             data-project-index={index}
             draggable={false}
-            onClick={() => {
-              if (suppressClickRef.current) {
-                suppressClickRef.current = false;
-                return;
-              }
-              if (isActive) {
-                onOpen(project);
-              } else {
-                onChange(index);
+            onClick={activate}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                activate();
               }
             }}
-            type="button"
+            role="button"
+            tabIndex={0}
           >
-            <span className="project-card__eyebrow">{project.eyebrow}</span>
-            <span className="project-card__number">
-              {String(index + 1).padStart(2, "0")}
+            <span className="project-card__topline">
+              <span className="project-card__number">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="project-card__eyebrow">
+                {project.eyebrow}
+              </span>
             </span>
             <h3>{project.title}</h3>
             <p>{project.summary}</p>
@@ -275,11 +301,29 @@ export function CardSwap({
                 <i key={tag}>{tag}</i>
               ))}
             </span>
-            <span className="project-card__action">
-              {isActive ? "点击查看完整解题路径" : "切换到这个项目"}
+            <button
+              aria-label={
+                isActive
+                  ? (presentation?.detailCta ?? "查看项目完整说明")
+                  : `${presentation?.inactiveCardCta ?? "切换到这个项目"}：${project.title}`
+              }
+              className="project-card__action"
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                event.stopPropagation();
+                if (isActive) {
+                  onOpen(project);
+                } else {
+                  onChange(index);
+                }
+              }}
+              type="button"
+            >
+              {isActive
+                ? (presentation?.activeCardCta ?? "查看项目完整说明")
+                : (presentation?.inactiveCardCta ?? "切换到这个项目")}
               <b aria-hidden="true">↗</b>
-            </span>
-          </button>
+            </button>
+          </article>
         );
 
         return isActive ? (

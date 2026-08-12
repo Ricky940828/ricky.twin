@@ -6,6 +6,8 @@ import type {
   SiteContent,
   SiteSectionId,
 } from "@/content/types";
+import { getIdentityCardContent } from "@/content/identity-card";
+import { getProjectCapabilityLevels } from "@/lib/project-capabilities";
 
 export interface ValidationIssue {
   path: string;
@@ -144,6 +146,57 @@ function validateHero(value: unknown, issues: ValidationIssue[]) {
     "secondaryCta",
   ].forEach((field) => requireString(hero[field], `hero.${field}`, issues));
   requireStringArray(hero.tags, "hero.tags", issues, 1);
+}
+
+function validateIdentityCard(
+  value: unknown,
+  issues: ValidationIssue[],
+) {
+  if (value === undefined) {
+    return;
+  }
+  const identityCard = requireRecord(value, "identityCard", issues);
+  if (!identityCard) {
+    return;
+  }
+  const front = requireRecord(
+    identityCard.front,
+    "identityCard.front",
+    issues,
+  );
+  if (front) {
+    [
+      "eyebrow",
+      "name",
+      "role",
+      "summary",
+      "primaryCta",
+      "secondaryCta",
+      "flipToBack",
+    ].forEach((field) =>
+      requireString(front[field], `identityCard.front.${field}`, issues),
+    );
+    requireStringArray(front.tags, "identityCard.front.tags", issues, 1);
+  }
+
+  const back = requireRecord(
+    identityCard.back,
+    "identityCard.back",
+    issues,
+  );
+  if (back) {
+    [
+      "eyebrow",
+      "title",
+      "statusLabel",
+      "footerEyebrow",
+      "footerBody",
+      "flipToFront",
+    ].forEach((field) =>
+      requireString(back[field], `identityCard.back.${field}`, issues),
+    );
+  }
+  requireString(identityCard.closeLabel, "identityCard.closeLabel", issues);
 }
 
 function validateSections(value: unknown, issues: ValidationIssue[]) {
@@ -288,6 +341,30 @@ function validateProjects(value: unknown, issues: ValidationIssue[]) {
       orders.add(order);
     }
     requireStringArray(project.tags, `${path}.tags`, issues, 1);
+    if (project.capabilityLevels !== undefined) {
+      if (
+        !Array.isArray(project.capabilityLevels) ||
+        project.capabilityLevels.length !== 6
+      ) {
+        issues.push({
+          path: `${path}.capabilityLevels`,
+          message: "项目调用能力必须配置 6 个等级",
+        });
+      } else {
+        project.capabilityLevels.forEach((level, capabilityIndex) => {
+          if (
+            !Number.isInteger(level) ||
+            (level as number) < 1 ||
+            (level as number) > 4
+          ) {
+            issues.push({
+              path: `${path}.capabilityLevels[${capabilityIndex}]`,
+              message: "项目能力等级必须是 1 到 4 的整数",
+            });
+          }
+        });
+      }
+    }
 
     if (!Array.isArray(project.solutionPath) || project.solutionPath.length !== 4) {
       issues.push({
@@ -455,6 +532,7 @@ export function validateSiteContent(value: unknown): ValidationResult {
 
   validateBrand(root.brand, issues);
   validateHero(root.hero, issues);
+  validateIdentityCard(root.identityCard, issues);
   validateSections(root.sections, issues);
   validateCapabilityAxes(root.capabilityAxes, issues);
   validateCareer(root.career, issues);
@@ -467,8 +545,15 @@ export function validateSiteContent(value: unknown): ValidationResult {
     return { ok: false, issues };
   }
 
+  const content = cloneSiteContent(value as SiteContent);
+  content.identityCard = getIdentityCardContent(content.identityCard);
+  content.projects = content.projects.map((project) => ({
+    ...project,
+    capabilityLevels: getProjectCapabilityLevels(project),
+  }));
+
   return {
     ok: true,
-    value: cloneSiteContent(value as SiteContent),
+    value: content,
   };
 }

@@ -1,38 +1,25 @@
 "use client";
 
-import { useState } from "react";
-
-import type {
-  KnowledgeBadge,
-  LoungeContent,
-  SiteContent,
-} from "@/content/types";
+import { getSitePresentation } from "@/content/site-presentation";
+import type { LoungeContent, SiteContent } from "@/content/types";
 
 import {
   EditorPanel,
   linesToList,
   TextAreaField,
   TextField,
-  ToggleField,
 } from "../editor-fields";
 
 export function LoungeEditor({
   content,
   onChange,
+  onPanelChange,
 }: {
   content: SiteContent;
   onChange: (content: SiteContent) => void;
+  onPanelChange?: (panelId: string) => void;
 }) {
-  const [selectedKnowledgeId, setSelectedKnowledgeId] = useState(
-    content.lounge.knowledge[0]?.id,
-  );
-  const selectedKnowledgeIndex = Math.max(
-    0,
-    content.lounge.knowledge.findIndex(
-      (item) => item.id === selectedKnowledgeId,
-    ),
-  );
-  const knowledge = content.lounge.knowledge[selectedKnowledgeIndex];
+  const presentation = getSitePresentation(content.presentation);
 
   const updateLounge = (
     field: keyof LoungeContent,
@@ -44,16 +31,15 @@ export function LoungeEditor({
     });
   };
 
-  const updateKnowledge = (patch: Partial<KnowledgeBadge>) => {
+  const updateLoungeCopy = (
+    field: keyof typeof presentation.lounge,
+    value: string,
+  ) => {
     onChange({
       ...content,
-      lounge: {
-        ...content.lounge,
-        knowledge: content.lounge.knowledge.map((item, index) =>
-          index === selectedKnowledgeIndex
-            ? { ...item, ...patch }
-            : item,
-        ),
+      presentation: {
+        ...presentation,
+        lounge: { ...presentation.lounge, [field]: value },
       },
     });
   };
@@ -61,27 +47,103 @@ export function LoungeEditor({
   return (
     <div className="admin-editor-stack">
       <EditorPanel
-        description="这里维护会客厅引导文案；Agent 的系统提示词在后续 Agent 管理中独立维护。"
-        title="AI 会客厅展示"
+        description="AI 会客厅页面开场区域的标题和说明。"
+        onActivate={onPanelChange}
+        panelId="lounge-intro"
+        title="会客厅页面引导"
       >
+        <div className="admin-form-grid is-two">
+          <TextField
+            label="会客厅眉题"
+            onChange={(event) =>
+              updateLounge("eyebrow", event.target.value)
+            }
+            value={content.lounge.eyebrow}
+          />
+          <TextField
+            label="会客厅大标题"
+            onChange={(event) =>
+              updateLoungeCopy("displayTitle", event.target.value)
+            }
+            value={presentation.lounge.displayTitle}
+          />
+        </div>
         <TextField
-          label="眉题"
-          onChange={(event) =>
-            updateLounge("eyebrow", event.target.value)
-          }
-          value={content.lounge.eyebrow}
-        />
-        <TextField
-          label="标题"
+          label="会客厅标题"
           onChange={(event) => updateLounge("title", event.target.value)}
           value={content.lounge.title}
         />
         <TextAreaField
-          label="引导说明"
+          label="会客厅引导说明"
           onChange={(event) => updateLounge("intro", event.target.value)}
           rows={4}
           value={content.lounge.intro}
         />
+      </EditorPanel>
+
+      <EditorPanel
+        description="知识库标签上方的数字分身和访客状态提示。"
+        onActivate={onPanelChange}
+        panelId="lounge-reception"
+        title="数字接待台"
+      >
+        <div className="admin-form-grid is-two">
+          <TextField
+            label="在线状态文案"
+            onChange={(event) =>
+              updateLoungeCopy("onlineLabel", event.target.value)
+            }
+            value={presentation.lounge.onlineLabel}
+          />
+          <TextField
+            label="访客状态文案"
+            onChange={(event) =>
+              updateLoungeCopy("visitorLabel", event.target.value)
+            }
+            value={presentation.lounge.visitorLabel}
+          />
+          <TextField
+            label="知识权限提示"
+            onChange={(event) =>
+              updateLoungeCopy("statusHint", event.target.value)
+            }
+            value={presentation.lounge.statusHint}
+          />
+        </div>
+        <p className="admin-form-note">
+          会客厅知识库标签只读取“知识库”模块中的真实名称、权限和 RAG 状态。
+        </p>
+      </EditorPanel>
+
+      <EditorPanel
+        description="访客进入会客厅后看到的对话台名称、输入提示和快捷问题。"
+        onActivate={onPanelChange}
+        panelId="lounge-conversation"
+        title="对话引导"
+      >
+        <TextField
+          label="聊天台名称"
+          onChange={(event) =>
+            updateLoungeCopy("chatTitle", event.target.value)
+          }
+          value={presentation.lounge.chatTitle}
+        />
+        <div className="admin-form-grid is-two">
+          <TextField
+            label="输入框提示"
+            onChange={(event) =>
+              updateLounge("inputPlaceholder", event.target.value)
+            }
+            value={content.lounge.inputPlaceholder}
+          />
+          <TextField
+            label="发送按钮文案"
+            onChange={(event) =>
+              updateLounge("sendLabel", event.target.value)
+            }
+            value={content.lounge.sendLabel}
+          />
+        </div>
         <TextAreaField
           hint="每行一个问题"
           label="快捷问题"
@@ -94,89 +156,32 @@ export function LoungeEditor({
           rows={6}
           value={content.lounge.quickQuestions.join("\n")}
         />
+      </EditorPanel>
+
+      <EditorPanel
+        description="这里维护对外可见的边界说明；Agent 系统提示词与工具权限仍在 Agent 管理中维护。"
+        onActivate={onPanelChange}
+        panelId="lounge-boundaries"
+        title="回答边界"
+      >
         <TextAreaField
           hint="每行一条"
-          label="回答边界"
+          label="回答边界清单"
           onChange={(event) =>
             updateLounge("boundaries", linesToList(event.target.value))
           }
-          rows={5}
+          rows={6}
           value={content.lounge.boundaries.join("\n")}
         />
+        <TextAreaField
+          label="聊天边界提示"
+          onChange={(event) =>
+            updateLoungeCopy("boundary", event.target.value)
+          }
+          rows={3}
+          value={presentation.lounge.boundary}
+        />
       </EditorPanel>
-
-      {knowledge ? (
-        <EditorPanel
-          description="仅在“知识库”模块尚未创建任何会客厅展示项时使用；正式知识库名称、权限和 RAG 状态以“知识库”模块为准。"
-          title="知识库标识占位内容"
-        >
-          <label className="admin-field">
-            <span>
-              <strong>选择知识库标识</strong>
-            </span>
-            <select
-              onChange={(event) =>
-                setSelectedKnowledgeId(event.target.value)
-              }
-              value={knowledge.id}
-            >
-              {content.lounge.knowledge.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <TextField
-            label="语义名称"
-            onChange={(event) =>
-              updateKnowledge({ name: event.target.value })
-            }
-            value={knowledge.name}
-          />
-          <TextAreaField
-            label="公开说明"
-            onChange={(event) =>
-              updateKnowledge({ description: event.target.value })
-            }
-            rows={3}
-            value={knowledge.description}
-          />
-          <div className="admin-form-grid is-two">
-            <label className="admin-field">
-              <span>
-                <strong>访问级别</strong>
-              </span>
-              <select
-                onChange={(event) =>
-                  updateKnowledge({
-                    access: event.target
-                      .value as KnowledgeBadge["access"],
-                  })
-                }
-                value={knowledge.access}
-              >
-                <option value="public">公开</option>
-                <option value="available">可访问</option>
-                <option value="request">需申请</option>
-              </select>
-            </label>
-            <TextField
-              label="权限文案"
-              onChange={(event) =>
-                updateKnowledge({ accessLabel: event.target.value })
-              }
-              value={knowledge.accessLabel}
-            />
-          </div>
-          <ToggleField
-            checked={knowledge.ragEnabled}
-            description="仅用于无后台知识库时的占位展示，不控制真实检索。"
-            label="占位状态显示可用"
-            onChange={(ragEnabled) => updateKnowledge({ ragEnabled })}
-          />
-        </EditorPanel>
-      ) : null}
     </div>
   );
 }

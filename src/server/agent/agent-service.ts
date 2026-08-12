@@ -56,6 +56,10 @@ function parseModelInput(value: unknown): ModelConnectionInput | null {
     enabled: value.enabled !== false,
     timeoutMs:
       typeof value.timeoutMs === "number" ? value.timeoutMs : 30_000,
+    contextWindowTokens:
+      typeof value.contextWindowTokens === "number"
+        ? value.contextWindowTokens
+        : 128_000,
     maxOutputTokens:
       typeof value.maxOutputTokens === "number"
         ? value.maxOutputTokens
@@ -176,7 +180,11 @@ export function createAgentService(
             },
           ],
         });
-        const message = `连接成功 · 模型返回：${result.text.slice(0, 40)}`;
+        const actualModel = result.providerModelId ?? model.modelId;
+        const requestHint = result.providerRequestId
+          ? ` · 请求 ${result.providerRequestId.slice(-12)}`
+          : "";
+        const message = `连接成功 · 实际模型：${actualModel}${requestHint}`;
         return {
           ok: true,
           workspace: await store.recordModelTest(id, {

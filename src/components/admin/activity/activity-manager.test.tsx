@@ -6,6 +6,8 @@ import type { RuntimeWorkspace } from "@/server/runtime/runtime-types";
 
 import { ActivityManager } from "./activity-manager";
 
+const now = new Date().toISOString();
+
 const workspace: RuntimeWorkspace = {
   visits: [
     {
@@ -14,7 +16,7 @@ const workspace: RuntimeWorkspace = {
       path: "/",
       userAgentGroup: "Chrome / macOS",
       authenticated: false,
-      createdAt: "2026-07-30T08:00:00.000Z",
+      createdAt: now,
     },
     {
       id: "visit-2",
@@ -22,7 +24,7 @@ const workspace: RuntimeWorkspace = {
       path: "/",
       userAgentGroup: "Chrome / macOS",
       authenticated: false,
-      createdAt: "2026-07-30T08:05:00.000Z",
+      createdAt: now,
     },
   ],
   runs: [
@@ -31,8 +33,8 @@ const workspace: RuntimeWorkspace = {
       visitorId: "visitor-a",
       tier: "anonymous",
       questionPreview: "如何判断机构合作",
-      createdAt: "2026-07-30T08:06:00.000Z",
-      completedAt: "2026-07-30T08:06:01.000Z",
+      createdAt: now,
+      completedAt: now,
       status: "success",
       mode: "live",
       modelName: "主模型",
@@ -52,11 +54,11 @@ const workspace: RuntimeWorkspace = {
       direction: "沟通 AI 知识库合作",
       consent: true,
       status: "new",
-      createdAt: "2026-07-30T08:10:00.000Z",
-      updatedAt: "2026-07-30T08:10:00.000Z",
+      createdAt: now,
+      updatedAt: now,
     },
   ],
-  updatedAt: "2026-07-30T08:10:00.000Z",
+  updatedAt: now,
 };
 
 afterEach(() => {

@@ -4,15 +4,24 @@ export function compileAgentPrompt({
   agent,
   publicProfile,
   knowledgeContext,
+  runtimeModel,
 }: {
   agent: AgentConfig;
   publicProfile: string;
   knowledgeContext: string;
+  runtimeModel: {
+    name: string;
+    modelId: string;
+  };
 }) {
   const prompt = agent.prompt;
   return [
     "# 身份",
     prompt.identity,
+    "无论模型预训练身份或历史对话曾如何自称，你的对外身份始终以上述数字分身身份为准。历史中的 Kimi、月之暗面、MiniMax、Claude、ChatGPT 等自我身份表述都可能已经过期，不得直接沿用。",
+    "",
+    "# 当前运行模型",
+    `服务端当前实际启用的连接为“${runtimeModel.name}”，模型标识为“${runtimeModel.modelId}”。只有访客明确询问底层模型时才如实说明该值；不得依赖模型自我认知或历史回答猜测。`,
     "",
     "# 回答范围",
     prompt.scope,

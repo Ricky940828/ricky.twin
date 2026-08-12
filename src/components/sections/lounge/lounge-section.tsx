@@ -14,12 +14,18 @@ import {
 import {
   useEffect,
   useReducer,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
 
+import { MarkdownContent } from "@/components/content/markdown-content";
 import { MagicRings } from "@/components/motion/magic-rings";
-import type { KnowledgeBadge, LoungeContent } from "@/content/types";
+import type {
+  KnowledgeBadge,
+  LoungeContent,
+  SitePresentation,
+} from "@/content/types";
 import { useIntersectionActive } from "@/hooks/use-intersection-active";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import type { ChatResult } from "@/server/chat/chat-types";
@@ -32,6 +38,84 @@ import {
 
 interface LoungeSectionProps {
   content: LoungeContent;
+  presentation?: SitePresentation["lounge"];
+}
+
+const KNOWLEDGE_CHANGE_EVENT = "ricky:knowledge-changed";
+const KNOWLEDGE_CHANNEL = "ricky-twin-knowledge";
+const MODEL_CHANGE_EVENT = "ricky:model-changed";
+const MODEL_CHANNEL = "ricky-twin-model";
+
+async function readChatResponse(
+  response: Response,
+  onDelta: (delta: string) => void,
+): Promise<ChatResult> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (
+    !contentType.includes("text/event-stream") ||
+    !response.body
+  ) {
+    return (await response.json()) as ChatResult;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult: ChatResult | undefined;
+
+  const consumeEvent = (rawEvent: string) => {
+    const lines = rawEvent.split(/\r?\n/);
+    const eventName =
+      lines
+        .find((line) => line.startsWith("event:"))
+        ?.slice(6)
+        .trim() ?? "message";
+    const data = lines
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+    if (!data) {
+      return;
+    }
+    const payload = JSON.parse(data) as {
+      text?: unknown;
+      result?: ChatResult;
+      message?: unknown;
+    };
+    if (eventName === "delta" && typeof payload.text === "string") {
+      onDelta(payload.text);
+    } else if (eventName === "done" && payload.result) {
+      finalResult = payload.result;
+    } else if (eventName === "error") {
+      throw new Error(
+        typeof payload.message === "string"
+          ? payload.message
+          : "stream-error",
+      );
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let boundary = /\r?\n\r?\n/.exec(buffer);
+    while (boundary) {
+      const rawEvent = buffer.slice(0, boundary.index);
+      buffer = buffer.slice(boundary.index + boundary[0].length);
+      consumeEvent(rawEvent);
+      boundary = /\r?\n\r?\n/.exec(buffer);
+    }
+    if (done) {
+      break;
+    }
+  }
+  if (buffer.trim()) {
+    consumeEvent(buffer);
+  }
+  if (!finalResult) {
+    throw new Error("missing-stream-result");
+  }
+  return finalResult;
 }
 
 function KnowledgeStatus({
@@ -95,7 +179,14 @@ function ChatMessage({
         {message.role === "assistant" ? "R" : <UserRound aria-hidden size={14} />}
       </span>
       <div>
-        <p>{message.text}</p>
+        {message.role === "assistant" ? (
+          <MarkdownContent
+            className="lounge-markdown"
+            content={message.text}
+          />
+        ) : (
+          <p>{message.text}</p>
+        )}
         {message.boundary ? (
           <small>
             <ShieldCheck aria-hidden size={13} />
@@ -268,14 +359,16 @@ function LeadDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function LoungeSection({ content }: LoungeSectionProps) {
+export function LoungeSection({ content, presentation }: LoungeSectionProps) {
   const [state, dispatch] = useReducer(loungeReducer, initialLoungeState);
   const [input, setInput] = useState("");
   const [permissionOpen, setPermissionOpen] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
-  const [managedKnowledge, setManagedKnowledge] = useState<
-    KnowledgeBadge[] | null
-  >(null);
+  const [managedKnowledge, setManagedKnowledge] = useState<KnowledgeBadge[]>(
+    [],
+  );
+  const [streamingText, setStreamingText] = useState("");
+  const knowledgeRequestRef = useRef(0);
   const reducedMotion = usePrefersReducedMotion();
   const { ref, active } = useIntersectionActive<HTMLElement>({
     threshold: 0.12,
@@ -284,6 +377,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
   useEffect(() => {
     let active = true;
     const loadKnowledgeStatus = async () => {
+      const requestId = ++knowledgeRequestRef.current;
       try {
         const response = await fetch("/api/knowledge-status", {
           cache: "no-store",
@@ -295,19 +389,68 @@ export function LoungeSection({ content }: LoungeSectionProps) {
         };
         if (
           active &&
+          requestId === knowledgeRequestRef.current &&
           result.ok &&
           Array.isArray(result.knowledge) &&
-          (result.configured || result.knowledge.length > 0)
+          Array.isArray(result.knowledge)
         ) {
           setManagedKnowledge(result.knowledge);
         }
       } catch {
-        // Published content remains a safe visual fallback.
+        // 保留上一次真实状态；不再回退到前台占位知识库。
       }
     };
+    const refreshKnowledge = () => void loadKnowledgeStatus();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshKnowledge();
+      }
+    };
+    let channel: BroadcastChannel | undefined;
+    if (typeof BroadcastChannel !== "undefined") {
+      channel = new BroadcastChannel(KNOWLEDGE_CHANNEL);
+      channel.addEventListener("message", refreshKnowledge);
+    }
     void loadKnowledgeStatus();
+    const interval = window.setInterval(loadKnowledgeStatus, 60_000);
+    window.addEventListener("focus", refreshKnowledge);
+    window.addEventListener(KNOWLEDGE_CHANGE_EVENT, refreshKnowledge);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshKnowledge);
+      window.removeEventListener(
+        KNOWLEDGE_CHANGE_EVENT,
+        refreshKnowledge,
+      );
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenVisible,
+      );
+      channel?.removeEventListener("message", refreshKnowledge);
+      channel?.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    const resetConversation = () => {
+      setStreamingText("");
+      dispatch({ type: "reset" });
+    };
+    let channel: BroadcastChannel | undefined;
+    if (typeof BroadcastChannel !== "undefined") {
+      channel = new BroadcastChannel(MODEL_CHANNEL);
+      channel.addEventListener("message", resetConversation);
+    }
+    window.addEventListener(MODEL_CHANGE_EVENT, resetConversation);
+    return () => {
+      window.removeEventListener(
+        MODEL_CHANGE_EVENT,
+        resetConversation,
+      );
+      channel?.removeEventListener("message", resetConversation);
+      channel?.close();
     };
   }, []);
 
@@ -317,6 +460,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
     }
     const controller = new AbortController();
     const ask = async () => {
+      setStreamingText("");
       try {
         const history = state.messages
           .slice(0, -1)
@@ -327,7 +471,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
                 : ("assistant" as const),
             content: message.text,
           }));
-        const response = await fetch("/api/chat", {
+        const response = await fetch("/api/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -336,7 +480,9 @@ export function LoungeSection({ content }: LoungeSectionProps) {
           }),
           signal: controller.signal,
         });
-        const result = (await response.json()) as ChatResult;
+        const result = await readChatResponse(response, (delta) => {
+          setStreamingText((current) => current + delta);
+        });
         if (!result.answer) {
           throw new Error("missing-answer");
         }
@@ -349,6 +495,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
             nextAction: result.nextAction,
           },
         });
+        setStreamingText("");
       } catch (error) {
         if (
           error instanceof DOMException &&
@@ -361,6 +508,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
           message:
             "数字分身暂时无法连接服务，请稍后再试，或先浏览公开的职业与项目内容。",
         });
+        setStreamingText("");
       }
     };
     void ask();
@@ -406,9 +554,9 @@ export function LoungeSection({ content }: LoungeSectionProps) {
         <span className="eyebrow">{content.eyebrow}</span>
         <h2
           className="section-title lounge-section__glitch"
-          data-text="AI 会客厅"
+          data-text={presentation?.displayTitle ?? "AI 会客厅"}
         >
-          AI 会客厅
+          {presentation?.displayTitle ?? "AI 会客厅"}
         </h2>
         <p className="section-copy">{content.intro}</p>
       </div>
@@ -416,26 +564,34 @@ export function LoungeSection({ content }: LoungeSectionProps) {
       <div className="lounge-status-bar glass-panel">
         <div className="lounge-online">
           <span aria-hidden="true" />
-          数字分身在线
+          {presentation?.onlineLabel ?? "数字分身在线"}
         </div>
         <div className="lounge-visitor">
           <UserRound aria-hidden size={15} />
-          当前访客：匿名
+          {presentation?.visitorLabel ?? "当前访客：匿名"}
         </div>
         <div className="lounge-status-bar__hint">
-          知识范围与权限由后台配置
+          {presentation?.statusHint ?? "知识范围与权限由后台配置"}
         </div>
       </div>
 
-      <div className="knowledge-status-grid">
-        {(managedKnowledge ?? content.knowledge).map((knowledge) => (
-          <KnowledgeStatus
-            key={knowledge.id}
-            knowledge={knowledge}
-            onRequestAccess={() => setPermissionOpen(true)}
-          />
-        ))}
-      </div>
+      {managedKnowledge.length ? (
+        <div
+          aria-label="当前可展示的知识库"
+          className={`knowledge-status-grid${
+            managedKnowledge.length > 2 ? " is-stacked" : ""
+          }`}
+          data-count={managedKnowledge.length}
+        >
+          {managedKnowledge.map((knowledge) => (
+            <KnowledgeStatus
+              key={knowledge.id}
+              knowledge={knowledge}
+              onRequestAccess={() => setPermissionOpen(true)}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <div className="lounge-stage">
         <div className="lounge-avatar-panel glass-panel">
@@ -456,7 +612,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
             <div>
               <MessageCircle aria-hidden size={17} />
               <span>
-                <strong>Ricky 数字接待台</strong>
+                <strong>{presentation?.chatTitle ?? "Ricky 数字接待台"}</strong>
                 <small>
                   {state.lastMode === "live"
                     ? "LIVE AGENT · RAG"
@@ -486,7 +642,19 @@ export function LoungeSection({ content }: LoungeSectionProps) {
                 onRequestAccess={() => setPermissionOpen(true)}
               />
             ))}
-            {state.status === "thinking" ? (
+            {state.status === "thinking" && streamingText ? (
+              <ChatMessage
+                message={{
+                  id: "streaming-answer",
+                  role: "assistant",
+                  text: streamingText,
+                  nextAction: "none",
+                }}
+                onLeaveContact={() => setLeadOpen(true)}
+                onRequestAccess={() => setPermissionOpen(true)}
+              />
+            ) : null}
+            {state.status === "thinking" && !streamingText ? (
               <div
                 aria-label="数字分身正在思考"
                 className="lounge-thinking"
@@ -533,7 +701,7 @@ export function LoungeSection({ content }: LoungeSectionProps) {
 
           <div className="lounge-chat__boundary">
             <ShieldCheck aria-hidden size={14} />
-            不作合作承诺、不报价；私密材料需登录后申请权限。
+            {presentation?.boundary ?? "不作合作承诺、不报价；私密材料需登录后申请权限。"}
           </div>
         </div>
       </div>

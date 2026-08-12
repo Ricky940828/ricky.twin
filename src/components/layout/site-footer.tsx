@@ -6,6 +6,7 @@ import type {
   BrandContent,
   FooterContent,
   SiteSectionId,
+  SitePresentation,
 } from "@/content/types";
 import { TargetLock } from "@/components/motion/target-lock";
 
@@ -13,12 +14,14 @@ interface SiteFooterProps {
   brand: BrandContent;
   content: FooterContent;
   onNavigate: (section: SiteSectionId) => void;
+  presentation?: SitePresentation["footer"];
 }
 
 export function SiteFooter({
   brand,
   content,
   onNavigate,
+  presentation,
 }: SiteFooterProps) {
   const openContact = () => {
     onNavigate("lounge");
@@ -30,7 +33,7 @@ export function SiteFooter({
   return (
     <footer className="site-footer">
       <div className="site-footer__main">
-        <span className="eyebrow">THE CONVERSATION CAN CONTINUE</span>
+        <span className="eyebrow">{presentation?.eyebrow ?? "THE CONVERSATION CAN CONTINUE"}</span>
         <h2>{content.headline}</h2>
         <p>{content.body}</p>
         <div className="site-footer__actions">
@@ -57,7 +60,7 @@ export function SiteFooter({
       <div className="site-footer__bottom">
         <strong>{brand.wordmark}</strong>
         <span>SHANGHAI · DIGITAL TWIN · {new Date().getFullYear()}</span>
-        <span>公开内容由结构化配置生成</span>
+        <span>{presentation?.bottomNote ?? "公开内容由结构化配置生成"}</span>
       </div>
     </footer>
   );

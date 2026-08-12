@@ -38,6 +38,11 @@ const workspace: AdminAgentWorkspace = {
       },
     ],
     knowledgeBaseIds: [],
+    retrieval: {
+      contextBudgetMode: "automatic",
+      customContextTokens: 16_000,
+      maxRetrievedChunks: 12,
+    },
     usage: {
       anonymousPerMinute: 4,
       anonymousDailyQuestions: 20,
@@ -139,5 +144,75 @@ describe("AgentManager", () => {
       await screen.findByText(/先判断合作主体/),
     ).toBeInTheDocument();
     expect(screen.getByText(/1 个召回片段/)).toBeInTheDocument();
+  });
+
+  it("展示真实主模型、支持配置 RAG 预算并显式确认更新", async () => {
+    const configuredWorkspace = structuredClone(workspace);
+    configuredWorkspace.publishedVersion.note =
+      "启用 Kimi K3 1M，并接入公开职业资料 RAG";
+    configuredWorkspace.activeModelId = "minimax";
+    configuredWorkspace.models = [
+      {
+        id: "minimax",
+        name: "MiniMax-M3",
+        kind: "openai-compatible",
+        baseUrl: "https://api.minimaxi.com/v1",
+        modelId: "MiniMax-M3",
+        enabled: true,
+        timeoutMs: 20_000,
+        contextWindowTokens: 1_000_000,
+        maxOutputTokens: 8_192,
+        createdAt: workspace.updatedAt,
+        updatedAt: workspace.updatedAt,
+        apiKeyConfigured: true,
+        apiKeyHint: "sk-****",
+      },
+    ];
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        requests.push({ url, init });
+        if (url.endsWith("/api/admin/knowledge")) {
+          return Response.json({
+            ok: true,
+            workspace: { bases: [], documents: [], updatedAt: workspace.updatedAt },
+          });
+        }
+        return Response.json({
+          ok: true,
+          workspace: configuredWorkspace,
+          message: init?.method === "PUT" ? "Agent 草稿已保存" : undefined,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AgentManager />);
+
+    expect((await screen.findAllByText("MiniMax-M3")).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/启用 Kimi K3 1M/),
+    ).not.toBeInTheDocument();
+    await user.selectOptions(
+      screen.getByLabelText("RAG 上下文预算模式"),
+      "full",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "确认更新 RAG 配置" }),
+    );
+
+    const update = requests.find(
+      ({ url, init }) =>
+        url.endsWith("/api/admin/agent") && init?.method === "PUT",
+    );
+    expect(update).toBeDefined();
+    expect(
+      JSON.parse(String(update?.init?.body)).config.retrieval
+        .contextBudgetMode,
+    ).toBe("full");
+    expect(
+      screen.getByRole("button", { name: "确认更新用量配置" }),
+    ).toBeInTheDocument();
   });
 });

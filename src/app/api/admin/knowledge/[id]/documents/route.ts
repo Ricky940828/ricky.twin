@@ -32,6 +32,7 @@ export async function POST(
     );
   }
   const documentId = formData.get("documentId");
+  const relativePath = formData.get("relativePath");
   const { id } = await context.params;
   const result = await getKnowledgeService().ingestDocument({
     baseId: id,
@@ -40,6 +41,10 @@ export async function POST(
         ? documentId
         : undefined,
     fileName: file.name,
+    relativePath:
+      typeof relativePath === "string" && relativePath
+        ? relativePath
+        : undefined,
     content: await file.text(),
   });
   return Response.json(result, {

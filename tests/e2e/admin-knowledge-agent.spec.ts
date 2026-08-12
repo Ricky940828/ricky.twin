@@ -96,5 +96,19 @@ test("知识库、Agent、前台会客厅和运行记录形成完整闭环", asy
   await expect(page.getByText(visitorName, { exact: true })).toBeVisible();
   await expect(page.getByText(/你如何判断一个机构合作是否值得推进/)).toBeVisible();
 
+  await page.getByRole("button", { name: "知识库", exact: true }).click();
+  await page.getByRole("button", { name: `删除知识库：${knowledgeName}` }).click();
+  const deleteDialog = page.getByRole("dialog", {
+    name: "确认删除知识库",
+  });
+  await expect(deleteDialog).toContainText("1 份文档");
+  await expect(deleteDialog).toContainText("2 个检索片段");
+  await page.getByRole("button", { name: "删除整个知识库" }).click();
+  await expect(page.getByText(`知识库“${knowledgeName}”已删除`)).toBeVisible();
+  await expect(page.getByText("还没有知识库")).toBeVisible();
+
+  await publicPage.reload();
+  await expect(publicPage.getByText(knowledgeName)).toHaveCount(0);
+
   await publicPage.close();
 });

@@ -3,14 +3,19 @@
 import {
   CheckCircle2,
   Database,
+  Eye,
   FileText,
+  FolderUp,
   Plus,
   RefreshCw,
+  Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -21,14 +26,19 @@ import {
   TextField,
   ToggleField,
 } from "@/components/admin/editor-fields";
+import { MarkdownContent } from "@/components/content/markdown-content";
 import type {
+  AdminKnowledgeDocumentResponse,
   AdminKnowledgeResponse,
   AdminKnowledgeWorkspace,
 } from "@/server/knowledge/knowledge-service";
 import type {
   KnowledgeAccessLevel,
   KnowledgeBase,
+  KnowledgeDocument,
 } from "@/server/knowledge/knowledge-types";
+
+import { groupMarkdownFolderFiles } from "./folder-import";
 
 interface BaseDraft {
   name: string;
@@ -52,6 +62,18 @@ const ACCESS_LABELS: Record<KnowledgeAccessLevel, string> = {
   private: "仅本人可用",
 };
 
+const KNOWLEDGE_CHANGE_EVENT = "ricky:knowledge-changed";
+const KNOWLEDGE_CHANNEL = "ricky-twin-knowledge";
+
+function announceKnowledgeChange() {
+  window.dispatchEvent(new Event(KNOWLEDGE_CHANGE_EVENT));
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(KNOWLEDGE_CHANNEL);
+    channel.postMessage({ type: "changed" });
+    channel.close();
+  }
+}
+
 function draftFromBase(base: KnowledgeBase): BaseDraft {
   return {
     name: base.name,
@@ -71,6 +93,18 @@ export function KnowledgeManager() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [documentPreview, setDocumentPreview] = useState<{
+    document: KnowledgeDocument;
+    content: string;
+  } | null>(null);
+  const [pendingDelete, setPendingDelete] =
+    useState<KnowledgeDocument | null>(null);
+  const [pendingBaseDelete, setPendingBaseDelete] =
+    useState<KnowledgeBase | null>(null);
+  const updateInputRefs = useRef(
+    new Map<string, HTMLInputElement>(),
+  );
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const selected = useMemo(
     () => workspace?.bases.find((base) => base.id === selectedId),
@@ -94,6 +128,10 @@ export function KnowledgeManager() {
     const next = value.bases.find((base) => base.id === nextId);
     if (next) {
       setDraft(draftFromBase(next));
+      setCreating(false);
+    } else {
+      setDraft(EMPTY_DRAFT);
+      setCreating(true);
     }
   };
 
@@ -163,6 +201,7 @@ export function KnowledgeManager() {
       }
       setCreating(false);
       applyWorkspace(result.workspace);
+      announceKnowledgeChange();
       setMessage(creating ? "知识库已创建" : "知识库配置已保存");
     } catch {
       setError("知识库配置保存失败");
@@ -198,6 +237,7 @@ export function KnowledgeManager() {
         return;
       }
       applyWorkspace(result.workspace);
+      announceKnowledgeChange();
       setMessage(
         documentId
           ? `${file.name} 已更新并重新索引`
@@ -211,6 +251,182 @@ export function KnowledgeManager() {
     }
   };
 
+  const importFolder = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (!workspace) {
+      return;
+    }
+    const plan = groupMarkdownFolderFiles(event.target.files ?? []);
+    if (plan.groups.length === 0) {
+      setError("请选择至少包含一份 Markdown 的文件夹");
+      event.target.value = "";
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      let nextWorkspace = workspace;
+      let importedFiles = 0;
+      for (const group of plan.groups) {
+        let base = nextWorkspace.bases.find(
+          (item) => item.name.trim() === group.rootName.trim(),
+        );
+        if (!base) {
+          const beforeIds = new Set(
+            nextWorkspace.bases.map((item) => item.id),
+          );
+          const createResponse = await fetch("/api/admin/knowledge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: group.rootName,
+              description: `由文件夹“${group.rootName}”导入的 Markdown 知识库。`,
+              defaultAccess: "private",
+              ragEnabled: true,
+              loungeVisible: true,
+            }),
+          });
+          const created =
+            (await createResponse.json()) as AdminKnowledgeResponse;
+          if (!created.ok) {
+            throw new Error(created.message);
+          }
+          nextWorkspace = created.workspace;
+          base = nextWorkspace.bases.find(
+            (item) => !beforeIds.has(item.id),
+          );
+          if (!base) {
+            throw new Error(`知识库“${group.rootName}”创建结果无法识别`);
+          }
+        }
+
+        for (const item of group.files) {
+          const formData = new FormData();
+          formData.append("file", item.file);
+          formData.append("relativePath", item.relativePath);
+          const uploadResponse = await fetch(
+            `/api/admin/knowledge/${base.id}/documents`,
+            { method: "POST", body: formData },
+          );
+          const uploaded =
+            (await uploadResponse.json()) as AdminKnowledgeResponse;
+          if (!uploaded.ok) {
+            throw new Error(uploaded.message);
+          }
+          nextWorkspace = uploaded.workspace;
+          importedFiles += 1;
+        }
+      }
+      applyWorkspace(nextWorkspace);
+      announceKnowledgeChange();
+      setMessage(
+        `${plan.groups.length} 个知识库、${importedFiles} 份 Markdown 已导入` +
+          (plan.skipped.length
+            ? `；已跳过 ${plan.skipped.length} 个非 Markdown 文件`
+            : ""),
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? `文件夹导入未完成：${reason.message}`
+          : "文件夹导入未完成",
+      );
+    } finally {
+      setBusy(false);
+      event.target.value = "";
+    }
+  };
+
+  const openDocument = async (document: KnowledgeDocument) => {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/admin/knowledge/${document.baseId}/documents/${document.id}`,
+        { cache: "no-store" },
+      );
+      const result =
+        (await response.json()) as AdminKnowledgeDocumentResponse;
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setDocumentPreview({
+        document: result.document,
+        content: result.content,
+      });
+    } catch {
+      setError("文档内容暂时无法读取");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteDocument = async () => {
+    if (!pendingDelete) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/admin/knowledge/${pendingDelete.baseId}/documents/${pendingDelete.id}`,
+        { method: "DELETE" },
+      );
+      const result = (await response.json()) as AdminKnowledgeResponse;
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      applyWorkspace(result.workspace);
+      announceKnowledgeChange();
+      setPendingDelete(null);
+      setDocumentPreview((current) =>
+        current?.document.id === pendingDelete.id ? null : current,
+      );
+      setMessage(`${pendingDelete.fileName} 已删除`);
+    } catch {
+      setError("文档删除失败，原有内容仍保持可用");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteBase = async () => {
+    if (!pendingBaseDelete) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/admin/knowledge/${pendingBaseDelete.id}`,
+        { method: "DELETE" },
+      );
+      const result = (await response.json()) as AdminKnowledgeResponse;
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      applyWorkspace(result.workspace);
+      announceKnowledgeChange();
+      setPendingBaseDelete(null);
+      setDocumentPreview((current) =>
+        current?.document.baseId === pendingBaseDelete.id ? null : current,
+      );
+      setPendingDelete((current) =>
+        current?.baseId === pendingBaseDelete.id ? null : current,
+      );
+      setMessage(`知识库“${pendingBaseDelete.name}”已删除`);
+    } catch {
+      setError("知识库删除失败，原有内容仍保持可用");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!workspace) {
     return (
       <section className="admin-module-loading">
@@ -221,7 +437,8 @@ export function KnowledgeManager() {
   }
 
   return (
-    <div className="admin-knowledge-layout">
+    <>
+      <div className="admin-knowledge-layout">
       <aside className="admin-knowledge-list">
         <header>
           <div>
@@ -240,6 +457,31 @@ export function KnowledgeManager() {
             <Plus aria-hidden size={16} />
           </button>
         </header>
+        <button
+          className="admin-knowledge-folder-import"
+          disabled={busy}
+          onClick={() => folderInputRef.current?.click()}
+          type="button"
+        >
+          <FolderUp aria-hidden size={16} />
+          导入 Markdown 文件夹
+        </button>
+        <input
+          ref={(input) => {
+            folderInputRef.current = input;
+            if (input) {
+              input.setAttribute("webkitdirectory", "");
+              input.setAttribute("directory", "");
+            }
+          }}
+          accept=".md,text/markdown"
+          aria-label="选择 Markdown 文件夹"
+          className="admin-document-update-input"
+          disabled={busy}
+          multiple
+          onChange={(event) => void importFolder(event)}
+          type="file"
+        />
         {workspace.bases.length === 0 ? (
           <div className="admin-knowledge-empty">
             <Database aria-hidden size={24} />
@@ -283,14 +525,28 @@ export function KnowledgeManager() {
           <>
             <EditorPanel
               action={
-                <button
-                  className="admin-button is-primary"
-                  disabled={busy}
-                  onClick={() => void saveBase()}
-                  type="button"
-                >
-                  {creating ? "创建知识库" : "保存配置"}
-                </button>
+                <div className="admin-knowledge-settings-actions">
+                  {!creating && selected ? (
+                    <button
+                      aria-label={`删除知识库：${selected.name}`}
+                      className="admin-button is-danger"
+                      disabled={busy}
+                      onClick={() => setPendingBaseDelete(selected)}
+                      type="button"
+                    >
+                      <Trash2 aria-hidden size={14} />
+                      删除知识库
+                    </button>
+                  ) : null}
+                  <button
+                    className="admin-button is-primary"
+                    disabled={busy}
+                    onClick={() => void saveBase()}
+                    type="button"
+                  >
+                    {creating ? "创建知识库" : "保存配置"}
+                  </button>
+                </div>
               }
               description="语义名称会用于前台权限提示；真实目录和内部标识不会对外展示。"
               title={creating ? "新建知识库" : "知识库设置"}
@@ -399,7 +655,7 @@ export function KnowledgeManager() {
                             <RefreshCw aria-hidden size={18} />
                           )}
                         </span>
-                        <div>
+                        <div className="admin-document-list__meta">
                           <strong>{document.fileName}</strong>
                           <small>
                             {document.chunkCount} 个片段 ·{" "}
@@ -410,18 +666,60 @@ export function KnowledgeManager() {
                             KB
                           </small>
                         </div>
-                        <label className="admin-document-update">
-                          更新内容
-                          <input
-                            accept=".md,text/markdown"
+                        <div className="admin-document-actions">
+                          <button
+                            aria-label={`查看内容：${document.fileName}`}
+                            disabled={busy}
+                            onClick={() => void openDocument(document)}
+                            type="button"
+                          >
+                            <Eye aria-hidden size={14} />
+                            查看
+                          </button>
+                          <button
                             aria-label={`更新内容：${document.fileName}`}
+                            disabled={busy}
+                            onClick={() =>
+                              updateInputRefs.current
+                                .get(document.id)
+                                ?.click()
+                            }
+                            type="button"
+                          >
+                            <RefreshCw aria-hidden size={14} />
+                            更新内容
+                          </button>
+                          <input
+                            ref={(input) => {
+                              if (input) {
+                                updateInputRefs.current.set(
+                                  document.id,
+                                  input,
+                                );
+                              } else {
+                                updateInputRefs.current.delete(document.id);
+                              }
+                            }}
+                            accept=".md,text/markdown"
+                            aria-label={`选择替换文件：${document.fileName}`}
+                            className="admin-document-update-input"
                             disabled={busy}
                             onChange={(event) =>
                               void upload(event, document.id)
                             }
                             type="file"
                           />
-                        </label>
+                          <button
+                            aria-label={`删除文档：${document.fileName}`}
+                            className="is-danger"
+                            disabled={busy}
+                            onClick={() => setPendingDelete(document)}
+                            type="button"
+                          >
+                            <Trash2 aria-hidden size={14} />
+                            删除
+                          </button>
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -442,7 +740,118 @@ export function KnowledgeManager() {
             {error}
           </div>
         ) : null}
+        </div>
       </div>
-    </div>
+
+      {documentPreview ? (
+        <div className="admin-document-dialog-overlay" role="presentation">
+          <dialog
+            aria-label={`查看文档：${documentPreview.document.fileName}`}
+            className="admin-document-dialog"
+            open
+          >
+            <header>
+              <div>
+                <span className="admin-kicker">MARKDOWN SOURCE</span>
+                <h2>{documentPreview.document.fileName}</h2>
+                <p>
+                  {documentPreview.document.chunkCount} 个片段 ·{" "}
+                  {Math.max(
+                    1,
+                    Math.round(
+                      documentPreview.document.sizeBytes / 1024,
+                    ),
+                  )}{" "}
+                  KB
+                </p>
+              </div>
+              <button
+                aria-label="关闭文档内容"
+                onClick={() => setDocumentPreview(null)}
+                type="button"
+              >
+                <X aria-hidden size={18} />
+              </button>
+            </header>
+            <MarkdownContent
+              className="admin-document-markdown"
+              content={documentPreview.content}
+            />
+          </dialog>
+        </div>
+      ) : null}
+
+      {pendingDelete ? (
+        <div className="admin-document-dialog-overlay" role="presentation">
+          <dialog
+            aria-label="确认删除文档"
+            className="admin-document-confirm"
+            open
+          >
+            <span className="admin-kicker">DELETE DOCUMENT</span>
+            <h2>删除这份文档？</h2>
+            <p>
+              将同时移除「{pendingDelete.fileName}」的原文与{" "}
+              {pendingDelete.chunkCount} 个检索片段，此操作不能撤销。
+            </p>
+            <div>
+              <button
+                className="admin-button is-secondary"
+                disabled={busy}
+                onClick={() => setPendingDelete(null)}
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                className="admin-button is-danger"
+                disabled={busy}
+                onClick={() => void deleteDocument()}
+                type="button"
+              >
+                {busy ? "正在删除…" : "确认删除"}
+              </button>
+            </div>
+          </dialog>
+        </div>
+      ) : null}
+
+      {pendingBaseDelete ? (
+        <div className="admin-document-dialog-overlay" role="presentation">
+          <dialog
+            aria-label="确认删除知识库"
+            className="admin-document-confirm"
+            open
+          >
+            <span className="admin-kicker">DELETE KNOWLEDGE BASE</span>
+            <h2>删除整个知识库？</h2>
+            <p>
+              将删除「{pendingBaseDelete.name}」及其中全部{" "}
+              {pendingBaseDelete.documentCount} 份文档、{" "}
+              {pendingBaseDelete.chunkCount} 个检索片段；前台标签与 RAG
+              检索范围也会同步移除。此操作不能撤销。
+            </p>
+            <div>
+              <button
+                className="admin-button is-secondary"
+                disabled={busy}
+                onClick={() => setPendingBaseDelete(null)}
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                className="admin-button is-danger"
+                disabled={busy}
+                onClick={() => void deleteBase()}
+                type="button"
+              >
+                {busy ? "正在删除…" : "删除整个知识库"}
+              </button>
+            </div>
+          </dialog>
+        </div>
+      ) : null}
+    </>
   );
 }

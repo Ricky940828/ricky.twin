@@ -47,12 +47,19 @@ export interface AgentUsagePolicy {
   siteDailyTokenBudget: number;
 }
 
+export interface AgentRetrievalPolicy {
+  contextBudgetMode: "automatic" | "custom" | "full";
+  customContextTokens: number;
+  maxRetrievedChunks: number;
+}
+
 export interface AgentConfig {
   schemaVersion: number;
   name: string;
   prompt: AgentPromptProtocol;
   tools: AgentToolPolicy[];
   knowledgeBaseIds: string[];
+  retrieval: AgentRetrievalPolicy;
   usage: AgentUsagePolicy;
 }
 
@@ -72,6 +79,7 @@ export interface ModelConnectionBase {
   modelId: string;
   enabled: boolean;
   timeoutMs: number;
+  contextWindowTokens: number;
   maxOutputTokens: number;
   createdAt: string;
   updatedAt: string;
@@ -101,6 +109,7 @@ export interface ModelConnectionInput {
   modelId: string;
   enabled: boolean;
   timeoutMs: number;
+  contextWindowTokens: number;
   maxOutputTokens: number;
 }
 
@@ -145,4 +154,6 @@ export interface ModelUsage {
 export interface UnifiedModelResponse {
   text: string;
   usage: ModelUsage;
+  providerModelId?: string;
+  providerRequestId?: string;
 }

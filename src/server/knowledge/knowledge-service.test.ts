@@ -53,6 +53,19 @@ describe("KnowledgeService", () => {
     if (uploaded.ok) {
       expect(uploaded.workspace).not.toHaveProperty("chunks");
       expect(uploaded.workspace.documents[0].chunkCount).toBe(1);
+
+      const deleted = await service.deleteBase(
+        created.workspace.bases[0].id,
+      );
+      expect(deleted).toEqual(
+        expect.objectContaining({
+          ok: true,
+          workspace: expect.objectContaining({
+            bases: [],
+            documents: [],
+          }),
+        }),
+      );
     }
   });
 });

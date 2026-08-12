@@ -5,7 +5,10 @@ import type { KnowledgeService } from "@/server/knowledge/knowledge-service";
 import type { AgentStore } from "@/server/agent/agent-store";
 import type { RuntimeStore } from "@/server/runtime/runtime-store";
 
-import { createChatService } from "./chat-service";
+import {
+  createChatService,
+  createSafeDeltaBuffer,
+} from "./chat-service";
 
 const agent = {
   schemaVersion: 1,
@@ -23,6 +26,11 @@ const agent = {
   },
   tools: [],
   knowledgeBaseIds: [],
+  retrieval: {
+    contextBudgetMode: "automatic" as const,
+    customContextTokens: 16_000,
+    maxRetrievedChunks: 12,
+  },
   usage: {
     anonymousPerMinute: 1,
     anonymousDailyQuestions: 1,
@@ -85,6 +93,25 @@ function dependencies() {
 }
 
 describe("chat service", () => {
+  it("流式输出会跨分片过滤模型内部思考过程", () => {
+    const deltas: string[] = [];
+    const stream = createSafeDeltaBuffer((delta) =>
+      deltas.push(delta),
+    );
+
+    stream.push("<thi");
+    stream.push("nk>内部推理。");
+    stream.push("</think>\n\n## 正式回答\n\n");
+    stream.push("- 只展示结论。");
+    stream.finish();
+
+    const answer = deltas.join("");
+    expect(answer).not.toContain("内部推理");
+    expect(answer).not.toContain("think");
+    expect(answer).toContain("## 正式回答");
+    expect(answer).toContain("只展示结论");
+  });
+
   it("额度拒绝发生在知识检索与模型调用之前", async () => {
     const deps = dependencies();
     vi.mocked(deps.runtimeStore.begin).mockResolvedValue({

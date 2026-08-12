@@ -4,35 +4,26 @@ import Image from "next/image";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { getIdentityCardContent } from "@/content/identity-card";
+import type {
+  IdentityCardContent,
+  KnowledgeBadge,
+} from "@/content/types";
+
+export type IdentityCardFace = "front" | "back";
+
 interface IdentityCardDialogProps {
+  content?: IdentityCardContent;
+  faceRequestId?: number;
+  initialFace?: IdentityCardFace;
   open: boolean;
   onClose: () => void;
 }
 
-const knowledgeAccess = [
-  {
-    name: "职业路径与公开项目",
-    detail: "公开访问",
-    status: "open",
-  },
-  {
-    name: "AI 应用与知识资产化",
-    detail: "公开访问",
-    status: "open",
-  },
-  {
-    name: "金融产品与行业方法",
-    detail: "受邀可见",
-    status: "locked",
-  },
-  {
-    name: "原始证据与敏感判断",
-    detail: "单独授权",
-    status: "locked",
-  },
-] as const;
-
 export function IdentityCardDialog({
+  content,
+  faceRequestId,
+  initialFace = "front",
   open,
   onClose,
 }: IdentityCardDialogProps) {
@@ -40,11 +31,57 @@ export function IdentityCardDialog({
     return null;
   }
 
-  return <OpenIdentityCard onClose={onClose} />;
+  return (
+    <OpenIdentityCard
+      key={`${faceRequestId ?? "interactive"}:${initialFace}`}
+      content={getIdentityCardContent(content)}
+      initialFace={initialFace}
+      onClose={onClose}
+    />
+  );
 }
 
-function OpenIdentityCard({ onClose }: { onClose: () => void }) {
-  const [flipped, setFlipped] = useState(false);
+function OpenIdentityCard({
+  content,
+  initialFace,
+  onClose,
+}: {
+  content: IdentityCardContent;
+  initialFace: IdentityCardFace;
+  onClose: () => void;
+}) {
+  const [flipped, setFlipped] = useState(initialFace === "back");
+  const [knowledgeAccess, setKnowledgeAccess] = useState<KnowledgeBadge[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const loadKnowledgeAccess = async () => {
+      try {
+        const response = await fetch("/api/knowledge-status", {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as {
+          ok?: boolean;
+          knowledge?: KnowledgeBadge[];
+        };
+        if (active && result.ok && Array.isArray(result.knowledge)) {
+          setKnowledgeAccess(result.knowledge);
+        }
+      } catch {
+        // Keep the card truthful and empty instead of falling back to placeholders.
+      }
+    };
+    const refresh = () => void loadKnowledgeAccess();
+
+    void loadKnowledgeAccess();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("ricky:knowledge-changed", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("ricky:knowledge-changed", refresh);
+    };
+  }, []);
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -94,8 +131,8 @@ function OpenIdentityCard({ onClose }: { onClose: () => void }) {
             type="button"
           >
             {flipped
-              ? "翻回正面：个人身份"
-              : "翻到背面：知识与权限"}
+              ? content.back.flipToFront
+              : content.front.flipToBack}
           </button>
           <button
             aria-label="关闭身份卡"
@@ -103,7 +140,7 @@ function OpenIdentityCard({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             type="button"
           >
-            关闭
+            {content.closeLabel}
           </button>
         </div>
 
@@ -119,6 +156,7 @@ function OpenIdentityCard({ onClose }: { onClose: () => void }) {
               <Image
                 alt="李富豪数字形象"
                 fill
+                priority
                 sizes="360px"
                 src="/character/ricky-hero-idle-poster.png"
               />
@@ -126,33 +164,32 @@ function OpenIdentityCard({ onClose }: { onClose: () => void }) {
 
             <div className="identity-card__profile">
               <span className="identity-card__eyebrow">
-                LI FUHAO / DIGITAL ID 0717
+                {content.front.eyebrow}
               </span>
-              <h2 id="identity-card-title">李富豪 · Ricky</h2>
+              <h2 id="identity-card-title">{content.front.name}</h2>
               <p className="identity-card__role">
-                金融产品经理 / AI 应用实战者 / 上海
+                {content.front.role}
               </p>
               <p className="identity-card__summary">
-                7年+信贷行业经验，擅长机构资金资产对接、交易结构、信贷全流程产品设计与落地；正在将历史工作资产转化为可验证、可迁移的数字分身。
+                {content.front.summary}
               </p>
               <div className="identity-card__tags">
-                <span>机构信贷</span>
-                <span>产品设计</span>
-                <span>项目落地</span>
-                <span>AI 应用</span>
+                {content.front.tags.map((tag) => (
+                  <span key={tag}>{tag}</span>
+                ))}
               </div>
               <div className="identity-card__primary-actions">
                 <button
                   onClick={() => goToSection("lounge")}
                   type="button"
                 >
-                  进入 AI 会客厅
+                  {content.front.primaryCta}
                 </button>
                 <button
                   onClick={() => goToSection("career")}
                   type="button"
                 >
-                  查看职业路线
+                  {content.front.secondaryCta}
                 </button>
               </div>
             </div>
@@ -165,42 +202,43 @@ function OpenIdentityCard({ onClose }: { onClose: () => void }) {
             <header className="identity-card__access-header">
               <div>
                 <span className="identity-card__eyebrow">
-                  KNOWLEDGE ACCESS
+                  {content.back.eyebrow}
                 </span>
-                <h2>知识与访问权限</h2>
+                <h2>{content.back.title}</h2>
               </div>
               <span className="identity-card__access-status">
                 <i aria-hidden="true" />
-                RAG READY
+                {content.back.statusLabel}
               </span>
             </header>
 
             <div className="identity-card__access-grid">
-              {knowledgeAccess.map((item) => (
-                <article
-                  data-access={item.status}
-                  key={item.name}
-                >
-                  <span className="identity-card__access-icon">
-                    {item.status === "open" ? (
-                      <ShieldCheck aria-hidden="true" size={17} />
-                    ) : (
-                      <LockKeyhole aria-hidden="true" size={17} />
-                    )}
-                  </span>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <small>{item.detail}</small>
-                  </div>
-                </article>
-              ))}
+              {knowledgeAccess.map((item) => {
+                const open = item.access === "public" && item.ragEnabled;
+                return (
+                  <article
+                    data-access={open ? "open" : "locked"}
+                    key={item.id}
+                  >
+                    <span className="identity-card__access-icon">
+                      {open ? (
+                        <ShieldCheck aria-hidden="true" size={17} />
+                      ) : (
+                        <LockKeyhole aria-hidden="true" size={17} />
+                      )}
+                    </span>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <small>{item.accessLabel}</small>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
 
             <footer className="identity-card__access-footer">
-              <span>PUBLIC PROFILE / CONTROLLED KNOWLEDGE</span>
-              <p>
-                深度内容会根据访客身份与授权范围检索，不公开真实文件路径。
-              </p>
+              <span>{content.back.footerEyebrow}</span>
+              <p>{content.back.footerBody}</p>
             </footer>
           </section>
         </div>

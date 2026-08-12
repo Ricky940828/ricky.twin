@@ -3,6 +3,11 @@
 import { useState } from "react";
 
 import type { PracticeLink, SiteContent } from "@/content/types";
+import { getSitePresentation } from "@/content/site-presentation";
+import {
+  moveOrderedItem,
+  normalizeOrderedItems,
+} from "@/lib/ordered-content";
 
 import {
   EditorPanel,
@@ -29,9 +34,11 @@ function newPractice(order: number): PracticeLink {
 export function PracticeEditor({
   content,
   onChange,
+  onPanelChange,
 }: {
   content: SiteContent;
   onChange: (content: SiteContent) => void;
+  onPanelChange?: (panelId: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState(content.practice[0]?.id);
   const selectedIndex = Math.max(
@@ -39,6 +46,18 @@ export function PracticeEditor({
     content.practice.findIndex((item) => item.id === selectedId),
   );
   const practice = content.practice[selectedIndex];
+  const presentation = getSitePresentation(content.presentation);
+  const updatePracticeCopy = (
+    field: keyof typeof presentation.practice,
+    value: string,
+  ) =>
+    onChange({
+      ...content,
+      presentation: {
+        ...presentation,
+        practice: { ...presentation.practice, [field]: value },
+      },
+    });
 
   if (!practice) {
     return null;
@@ -52,9 +71,49 @@ export function PracticeEditor({
       ),
     });
   };
+  const orderedPractice = normalizeOrderedItems(content.practice);
+  const orderedIndex = orderedPractice.findIndex(
+    (item) => item.id === practice.id,
+  );
 
   return (
     <div className="admin-editor-stack">
+      <EditorPanel
+        description="维护实践板块的总标题、说明和通用按钮文案。"
+        onActivate={onPanelChange}
+        panelId="practice-intro"
+        title="实践板块文案"
+      >
+        <TextField
+          label="实践板块眉题"
+          onChange={(event) => updatePracticeCopy("eyebrow", event.target.value)}
+          value={presentation.practice.eyebrow}
+        />
+        <TextField
+          label="实践板块标题"
+          onChange={(event) => updatePracticeCopy("title", event.target.value)}
+          value={presentation.practice.title}
+        />
+        <TextAreaField
+          label="实践板块说明"
+          onChange={(event) => updatePracticeCopy("body", event.target.value)}
+          rows={4}
+          value={presentation.practice.body}
+        />
+        <div className="admin-form-grid is-two">
+          <TextField
+            label="可访问项目按钮"
+            onChange={(event) => updatePracticeCopy("openCta", event.target.value)}
+            value={presentation.practice.openCta}
+          />
+          <TextField
+            label="未开放项目按钮"
+            onChange={(event) => updatePracticeCopy("pendingCta", event.target.value)}
+            value={presentation.practice.pendingCta}
+          />
+        </div>
+      </EditorPanel>
+
       <EditorPanel
         action={
           <button
@@ -63,7 +122,10 @@ export function PracticeEditor({
               const created = newPractice(content.practice.length + 1);
               onChange({
                 ...content,
-                practice: [...content.practice, created],
+                practice: normalizeOrderedItems([
+                  ...content.practice,
+                  created,
+                ]),
               });
               setSelectedId(created.id);
             }}
@@ -73,6 +135,8 @@ export function PracticeEditor({
           </button>
         }
         description="首页快捷入口和实践现场读取同一份配置。"
+        onActivate={onPanelChange}
+        panelId="practice-links"
         title="实践入口"
       >
         <label className="admin-field">
@@ -84,7 +148,7 @@ export function PracticeEditor({
             onChange={(event) => setSelectedId(event.target.value)}
             value={practice.id}
           >
-            {content.practice.map((item) => (
+            {orderedPractice.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.title}
               </option>
@@ -94,13 +158,48 @@ export function PracticeEditor({
 
         <div className="admin-inline-actions">
           <button
+            disabled={orderedIndex <= 0}
+            onClick={() =>
+              onChange({
+                ...content,
+                practice: moveOrderedItem(
+                  content.practice,
+                  practice.id,
+                  -1,
+                ),
+              })
+            }
+            type="button"
+          >
+            前移
+          </button>
+          <button
+            disabled={orderedIndex === orderedPractice.length - 1}
+            onClick={() =>
+              onChange({
+                ...content,
+                practice: moveOrderedItem(
+                  content.practice,
+                  practice.id,
+                  1,
+                ),
+              })
+            }
+            type="button"
+          >
+            后移
+          </button>
+          <button
             className="is-danger"
             disabled={content.practice.length === 1}
             onClick={() => {
               const remaining = content.practice.filter(
                 (_, index) => index !== selectedIndex,
               );
-              onChange({ ...content, practice: remaining });
+              onChange({
+                ...content,
+                practice: normalizeOrderedItems(remaining),
+              });
               setSelectedId(remaining[0]?.id);
             }}
             type="button"
@@ -167,15 +266,6 @@ export function PracticeEditor({
               updatePractice({ statusLabel: event.target.value })
             }
             value={practice.statusLabel}
-          />
-          <TextField
-            label="展示顺序"
-            min={1}
-            onChange={(event) =>
-              updatePractice({ order: Number(event.target.value) })
-            }
-            type="number"
-            value={practice.order}
           />
         </div>
         <div className="admin-form-grid is-two">

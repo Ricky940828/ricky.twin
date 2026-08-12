@@ -13,9 +13,9 @@ import {
 import type { ReactNode } from "react";
 
 import {
-  ADMIN_EDITOR_ITEMS,
+  ADMIN_EDITOR_GROUPS,
   type AdminEditorId,
-} from "./content-editor";
+} from "./content-editor-config";
 
 export type SaveState =
   | "saved"
@@ -89,30 +89,39 @@ export function AdminShell({
         </div>
         <nav aria-label="内容编辑导航">
           <span>前台内容</span>
-          {ADMIN_EDITOR_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              aria-label={item.label}
-              aria-current={
-                activeModule === "content" &&
-                activeEditor === item.id
-                  ? "page"
-                  : undefined
-              }
-              className={
-                activeModule === "content" && activeEditor === item.id
-                  ? "is-active"
-                  : ""
-              }
-              onClick={() => {
-                onModuleChange("content");
-                onEditorChange(item.id);
-              }}
-              type="button"
+          {ADMIN_EDITOR_GROUPS.map((group) => (
+            <div
+              key={group.id}
+              aria-label={group.label}
+              className="admin-rail__content-group"
+              role="group"
             >
-              <small>{item.eyebrow}</small>
-              {item.label}
-            </button>
+              <strong>{group.label}</strong>
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  aria-label={item.label}
+                  aria-current={
+                    activeModule === "content" && activeEditor === item.id
+                      ? "page"
+                      : undefined
+                  }
+                  className={
+                    activeModule === "content" && activeEditor === item.id
+                      ? "is-active"
+                      : ""
+                  }
+                  onClick={() => {
+                    onModuleChange("content");
+                    onEditorChange(item.id);
+                  }}
+                  type="button"
+                >
+                  <small>{item.eyebrow}</small>
+                  {item.label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="admin-rail__later">

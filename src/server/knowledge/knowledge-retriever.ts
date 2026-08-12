@@ -3,6 +3,10 @@ import type {
   KnowledgeChunk,
   KnowledgeWorkspace,
 } from "./knowledge-types";
+import {
+  estimateTextTokens,
+  takeTextWithinTokenBudget,
+} from "@/server/token-budget";
 
 export interface KnowledgeRetrievalInput {
   query: string;
@@ -10,6 +14,7 @@ export interface KnowledgeRetrievalInput {
   owner: boolean;
   limit?: number;
   maxChars?: number;
+  maxTokens?: number;
   baseIds?: string[];
 }
 
@@ -156,6 +161,10 @@ export function retrieveKnowledge(
   });
 
   const maxChars = Math.max(1, input.maxChars ?? 5_500);
+  const maxTokens =
+    typeof input.maxTokens === "number"
+      ? Math.max(0, Math.floor(input.maxTokens))
+      : undefined;
   let context = "";
   for (const match of matches) {
     const heading = match.headingPath.length
@@ -163,6 +172,20 @@ export function retrieveKnowledge(
       : match.documentTitle;
     const block = `[${match.baseName}｜${heading}]\n${match.content}`;
     const separator = context ? "\n\n" : "";
+    if (maxTokens !== undefined) {
+      const remainingTokens =
+        maxTokens -
+        estimateTextTokens(context) -
+        estimateTextTokens(separator);
+      if (remainingTokens <= 0) {
+        break;
+      }
+      const fitted = takeTextWithinTokenBudget(block, remainingTokens);
+      if (fitted) {
+        context += `${separator}${fitted}`;
+      }
+      continue;
+    }
     const remaining = maxChars - context.length - separator.length;
     if (remaining <= 0) {
       break;

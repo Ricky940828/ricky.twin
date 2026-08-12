@@ -1,7 +1,10 @@
 import type { SiteContent } from "./types";
+import { DEFAULT_IDENTITY_CARD_CONTENT } from "./identity-card";
+import { DEFAULT_SITE_PRESENTATION } from "./site-presentation";
 
 export const siteContent: SiteContent = {
   schemaVersion: 1,
+  presentation: DEFAULT_SITE_PRESENTATION,
   brand: {
     name: "Ricky 会客厅",
     wordmark: "RICKY.TWIN",
@@ -24,6 +27,7 @@ export const siteContent: SiteContent = {
     primaryCta: "进入 AI 会客厅",
     secondaryCta: "沿职业路线认识我",
   },
+  identityCard: DEFAULT_IDENTITY_CARD_CONTENT,
   sections: [
     {
       id: "hero",
@@ -137,6 +141,7 @@ export const siteContent: SiteContent = {
       title: "机构业务商业判断与产品落地",
       summary:
         "把模糊的合作机会，推进为主体清楚、经济成立、产品完整且能够持续经营的机构业务。",
+      capabilityLevels: [4, 4, 3, 3, 3, 2],
       solutionPath: [
         {
           label: "业务问题",
@@ -172,6 +177,7 @@ export const siteContent: SiteContent = {
       title: "资产资金标准化",
       summary:
         "把多机构、多资产与多资金条件拆成标准项、差异项和配置项，减少重复对接与重复建设。",
+      capabilityLevels: [3, 3, 3, 4, 3, 4],
       solutionPath: [
         {
           label: "业务问题",
@@ -207,6 +213,7 @@ export const siteContent: SiteContent = {
       title: "自营 H5 信贷产品落地",
       summary:
         "从客户旅程出发，把授信、支用、合同、放款、还款和贷后组织成真正可用的自营产品。",
+      capabilityLevels: [2, 2, 4, 4, 4, 3],
       solutionPath: [
         {
           label: "业务问题",
@@ -242,6 +249,7 @@ export const siteContent: SiteContent = {
       title: "AI 知识资产化与 FDE 实践",
       summary:
         "把历史材料、业务方法与真实流程变成可检索、可调用、可验证的知识和 AI 应用。",
+      capabilityLevels: [2, 2, 3, 3, 4, 4],
       solutionPath: [
         {
           label: "业务问题",

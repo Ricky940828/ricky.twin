@@ -17,6 +17,7 @@ import {
 } from "react";
 
 import type { SiteContent } from "@/content/types";
+import type { AdminPreviewFocusRequest } from "./content-editor-config";
 
 type PreviewDevice = "desktop" | "tablet" | "mobile";
 
@@ -37,6 +38,7 @@ export interface ContentPreviewMessage {
   type: "ricky:content-preview";
   payload: SiteContent;
   replayKey: number;
+  focus?: AdminPreviewFocusRequest;
 }
 
 export interface ContentPreviewReadyMessage {
@@ -46,10 +48,12 @@ export interface ContentPreviewReadyMessage {
 export function LivePreview({
   canPublish,
   content,
+  focus,
   onPublish,
 }: {
   canPublish: boolean;
   content: SiteContent;
+  focus?: AdminPreviewFocusRequest;
   onPublish: (note: string) => Promise<boolean | void>;
 }) {
   const [device, setDevice] = useState<PreviewDevice>("desktop");
@@ -69,12 +73,13 @@ export function LivePreview({
       type: "ricky:content-preview",
       payload: content,
       replayKey,
+      focus,
     };
     frameRef.current?.contentWindow?.postMessage(
       message,
       window.location.origin,
     );
-  }, [content, replayKey]);
+  }, [content, focus, replayKey]);
 
   useEffect(() => {
     postDraft();

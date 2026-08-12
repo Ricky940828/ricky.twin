@@ -2,6 +2,7 @@ import type {
   CreateKnowledgeBaseInput,
   IngestKnowledgeDocumentInput,
   KnowledgeBase,
+  KnowledgeDocumentContent,
   KnowledgeWorkspace,
   UpdateKnowledgeBaseInput,
 } from "./knowledge-types";
@@ -26,7 +27,16 @@ export interface KnowledgeStore {
     id: string,
     input: UpdateKnowledgeBaseInput,
   ): Promise<KnowledgeWorkspace>;
+  deleteBase(id: string): Promise<KnowledgeWorkspace>;
   ingestDocument(
     input: IngestKnowledgeDocumentInput,
+  ): Promise<KnowledgeWorkspace>;
+  getDocumentContent(
+    baseId: string,
+    documentId: string,
+  ): Promise<KnowledgeDocumentContent>;
+  deleteDocument(
+    baseId: string,
+    documentId: string,
   ): Promise<KnowledgeWorkspace>;
 }

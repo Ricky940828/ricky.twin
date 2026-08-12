@@ -42,6 +42,28 @@ export interface HeroContent {
   secondaryCta: string;
 }
 
+export interface IdentityCardContent {
+  front: {
+    eyebrow: string;
+    name: string;
+    role: string;
+    summary: string;
+    tags: string[];
+    primaryCta: string;
+    secondaryCta: string;
+    flipToBack: string;
+  };
+  back: {
+    eyebrow: string;
+    title: string;
+    statusLabel: string;
+    footerEyebrow: string;
+    footerBody: string;
+    flipToFront: string;
+  };
+  closeLabel: string;
+}
+
 export interface CareerStage {
   id: string;
   publicBrand: string;
@@ -74,6 +96,7 @@ export interface ProjectTheme {
   eyebrow: string;
   title: string;
   summary: string;
+  capabilityLevels?: CapabilityRadar;
   solutionPath: [
     ProjectPathStep,
     ProjectPathStep,
@@ -132,10 +155,59 @@ export interface FooterContent {
   secondaryCta: string;
 }
 
+export interface SectionIntroCopy {
+  eyebrow: string;
+  title: string;
+  body: string;
+}
+
+export interface SitePresentation {
+  headerCta: string;
+  heroProof: [
+    { value: string; label: string },
+    { value: string; label: string },
+    { value: string; label: string },
+  ];
+  heroPracticeEyebrow: string;
+  heroPracticeLabel: string;
+  heroScrollHint: string;
+  career: SectionIntroCopy & {
+    nextStagePrefix: string;
+    projectsCta: string;
+    radarCaption: string;
+  };
+  projects: SectionIntroCopy & {
+    activeCardCta: string;
+    inactiveCardCta: string;
+    detailCta: string;
+    mapEyebrow: string;
+    mapCaption: string;
+    mapCore: string;
+  };
+  practice: SectionIntroCopy & {
+    openCta: string;
+    pendingCta: string;
+  };
+  lounge: {
+    displayTitle: string;
+    onlineLabel: string;
+    visitorLabel: string;
+    statusHint: string;
+    chatTitle: string;
+    boundary: string;
+  };
+  footer: {
+    eyebrow: string;
+    bottomNote: string;
+  };
+}
+
 export interface SiteContent {
   schemaVersion: number;
   brand: BrandContent;
   hero: HeroContent;
+  /** Optional for backward compatibility with content saved before identity-card editing existed. */
+  identityCard?: IdentityCardContent;
   sections: SectionConfig[];
   capabilityAxes: [
     string,
@@ -150,4 +222,6 @@ export interface SiteContent {
   practice: PracticeLink[];
   lounge: LoungeContent;
   footer: FooterContent;
+  /** Optional for backward compatibility with content saved before v2. */
+  presentation?: SitePresentation;
 }

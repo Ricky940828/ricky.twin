@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { estimateTextTokens } from "@/server/token-budget";
+
 import type { KnowledgeWorkspace } from "./knowledge-types";
 import { retrieveKnowledge } from "./knowledge-retriever";
 
@@ -123,5 +125,17 @@ describe("retrieveKnowledge", () => {
     );
     expect(result.context.length).toBeLessThanOrEqual(80);
     expect(result.matches.every((match) => !("id" in match))).toBe(true);
+  });
+
+  it("按 Token 预算裁剪召回上下文", () => {
+    const result = retrieveKnowledge(workspace, {
+      query: "机构合作产品落地",
+      allowedBaseIds: [],
+      owner: false,
+      maxTokens: 24,
+      limit: 4,
+    });
+
+    expect(estimateTextTokens(result.context)).toBeLessThanOrEqual(24);
   });
 });

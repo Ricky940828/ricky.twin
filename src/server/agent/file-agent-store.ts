@@ -11,6 +11,7 @@ import type {
   AdminModelConnection,
   AgentConfig,
   AgentPromptProtocol,
+  AgentRetrievalPolicy,
   AgentToolPolicy,
   AgentUsagePolicy,
   AgentVersionMeta,
@@ -134,6 +135,12 @@ const DEFAULT_USAGE: AgentUsagePolicy = {
   siteDailyTokenBudget: 300_000,
 };
 
+const DEFAULT_RETRIEVAL: AgentRetrievalPolicy = {
+  contextBudgetMode: "automatic",
+  customContextTokens: 16_000,
+  maxRetrievedChunks: 12,
+};
+
 function seedAgent(): AgentConfig {
   return {
     schemaVersion: 1,
@@ -141,6 +148,7 @@ function seedAgent(): AgentConfig {
     prompt: structuredClone(DEFAULT_PROMPT),
     tools: structuredClone(TOOL_REGISTRY),
     knowledgeBaseIds: [],
+    retrieval: structuredClone(DEFAULT_RETRIEVAL),
     usage: structuredClone(DEFAULT_USAGE),
   };
 }
@@ -190,6 +198,12 @@ function normalizeAgent(config: AgentConfig): AgentConfig {
   if (!usage) {
     throw new AgentStoreError("使用额度不能为空", "invalid-input");
   }
+  const submittedRetrieval = config.retrieval ?? DEFAULT_RETRIEVAL;
+  const contextBudgetMode = ["automatic", "custom", "full"].includes(
+    submittedRetrieval.contextBudgetMode,
+  )
+    ? submittedRetrieval.contextBudgetMode
+    : DEFAULT_RETRIEVAL.contextBudgetMode;
   return {
     schemaVersion: 1,
     name: requireText(config.name, "Agent 名称"),
@@ -203,6 +217,19 @@ function normalizeAgent(config: AgentConfig): AgentConfig {
         ),
       ),
     ),
+    retrieval: {
+      contextBudgetMode,
+      customContextTokens: positiveInteger(
+        submittedRetrieval.customContextTokens,
+        "自定义 RAG 上下文 Token",
+        2_000_000,
+      ),
+      maxRetrievedChunks: positiveInteger(
+        submittedRetrieval.maxRetrievedChunks,
+        "最大召回片段数",
+        200,
+      ),
+    },
     usage: {
       anonymousPerMinute: positiveInteger(
         usage.anonymousPerMinute,
@@ -362,6 +389,11 @@ function normalizeConnection(
     modelId: requireText(input.modelId, "模型 ID"),
     enabled: Boolean(input.enabled),
     timeoutMs: positiveInteger(input.timeoutMs, "超时时间", 120_000),
+    contextWindowTokens: positiveInteger(
+      input.contextWindowTokens,
+      "上下文窗口 Token",
+      2_000_000,
+    ),
     maxOutputTokens: positiveInteger(
       input.maxOutputTokens,
       "最大输出 Token",
@@ -428,6 +460,14 @@ export function createFileAgentStore(
       if (workspace) {
         workspace.draft = normalizeAgent(workspace.draft);
         workspace.published = normalizeAgent(workspace.published);
+        workspace.models = workspace.models.map((model) => ({
+          ...model,
+          contextWindowTokens:
+            Number.isInteger(model.contextWindowTokens) &&
+            model.contextWindowTokens > 0
+              ? model.contextWindowTokens
+              : 128_000,
+        }));
         return workspace;
       }
     } catch (error) {

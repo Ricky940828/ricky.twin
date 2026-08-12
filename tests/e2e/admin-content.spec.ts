@@ -1,5 +1,43 @@
 import { expect, test } from "@playwright/test";
 
+const adminPassword =
+  process.env.PLAYWRIGHT_ADMIN_PASSWORD ?? "test-admin";
+
+test("身份名片拥有独立配置入口并可实时预览正反面", async ({
+  page,
+}) => {
+  await page.goto("/admin");
+  await page.getByLabel("管理员密码").fill(adminPassword);
+  await page.getByRole("button", { name: "登录后台" }).click();
+
+  await page
+    .getByRole("button", { name: "身份名片", exact: true })
+    .click();
+
+  const preview = page.frameLocator('iframe[title="前台实时预览"]');
+  const previewCard = preview.getByRole("dialog", {
+    name: "Ricky 数字身份卡",
+  });
+  await expect(previewCard).toBeVisible();
+  await expect(preview.locator(".identity-card")).toHaveAttribute(
+    "data-flipped",
+    "false",
+  );
+
+  const configuredName = "李富豪 · Ricky · 实时预览";
+  await page.getByLabel("对外姓名").fill(configuredName);
+  await expect(preview.getByText(configuredName)).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "知识与权限", exact: true })
+    .click();
+  await expect(preview.locator(".identity-card")).toHaveAttribute(
+    "data-flipped",
+    "true",
+  );
+  await expect(preview.getByText("知识与访问权限")).toBeVisible();
+});
+
 test("后台编辑、同源预览、保存与发布形成完整闭环", async ({
   context,
   page,
@@ -12,7 +50,7 @@ test("后台编辑、同源预览、保存与发布形成完整闭环", async ({
   });
 
   await page.goto("/admin");
-  await page.getByLabel("管理员密码").fill("test-admin");
+  await page.getByLabel("管理员密码").fill(adminPassword);
   await page.getByRole("button", { name: "登录后台" }).click();
 
   const statement = page.getByLabel("首页主张");
@@ -89,4 +127,59 @@ test("后台编辑、同源预览、保存与发布形成完整闭环", async ({
     await expect(publicPage.getByText(originalStatement)).toBeVisible();
     await publicPage.close();
   }
+});
+
+test("职业与项目增删改排序时实时预览保持单一完整页面", async ({
+  page,
+}) => {
+  await page.goto("/admin");
+  await page.getByLabel("管理员密码").fill(adminPassword);
+  await page.getByRole("button", { name: "登录后台" }).click();
+
+  const preview = page.frameLocator('iframe[title="前台实时预览"]');
+  await page.getByRole("button", { name: "职业路线", exact: true }).click();
+  const role = page.getByLabel("职位");
+  const originalRole = await role.inputValue();
+  const changedRole = `${originalRole} · E2E预览`;
+  await role.fill(changedRole);
+  await preview
+    .getByRole("button", { name: "职业路线", exact: true })
+    .click();
+  await expect(preview.getByText(changedRole, { exact: true })).toBeVisible();
+  await expect(preview.locator("#career")).toHaveCount(1);
+  await expect(preview.getByTestId("site-renderer")).toBeVisible();
+
+  const previewScrollBeforeAdd = await preview.locator("html").evaluate(
+    () => window.scrollY,
+  );
+  await page.getByRole("button", { name: "新增阶段" }).click();
+  await expect(preview.getByText("新职业阶段", { exact: true })).toBeVisible();
+  await expect(preview.locator(".career-section__intro")).toBeInViewport();
+  const previewScrollAfterAdd = await preview.locator("html").evaluate(
+    () => window.scrollY,
+  );
+  expect(
+    Math.abs(previewScrollAfterAdd - previewScrollBeforeAdd),
+  ).toBeLessThanOrEqual(12);
+  await page.getByRole("button", { name: "删除阶段" }).click();
+  await expect(preview.getByText("新职业阶段", { exact: true })).toHaveCount(0);
+  await expect(preview.locator("#career")).toHaveCount(1);
+
+  await page
+    .getByRole("button", { name: "项目与能力", exact: true })
+    .click();
+  await page.getByRole("button", { name: "后移" }).click();
+  await expect(preview.locator("#projects")).toHaveCount(1);
+  await expect(preview.locator(".projects-section")).toBeVisible();
+  await expect(preview.locator(".project-card")).toHaveCount(4);
+
+  await page.getByRole("button", { name: "新增项目" }).click();
+  await expect(preview.getByText("01 / 05")).toHaveCount(2);
+  await expect(preview.locator("#projects .projects-stage")).toHaveCount(1);
+  await expect(preview.locator("#projects .pin-spacer")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "删除项目" }).click();
+  await expect(preview.getByText("01 / 04")).toHaveCount(2);
+  await expect(preview.locator("#projects .projects-stage")).toHaveCount(1);
+  await expect(preview.locator("#projects .pin-spacer")).toHaveCount(1);
 });

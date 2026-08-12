@@ -24,7 +24,8 @@ export interface LoungeState {
 export type LoungeEvent =
   | { type: "submit"; question: string }
   | { type: "resolve"; reply?: LoungeReply; mode?: LoungeState["lastMode"] }
-  | { type: "fail"; message: string };
+  | { type: "fail"; message: string }
+  | { type: "reset" };
 
 const REPLIES: Record<string, LoungeReply> = {
   institution: {
@@ -162,6 +163,13 @@ export function loungeReducer(
         ],
       };
     }
+    case "reset":
+      return {
+        ...initialLoungeState,
+        messages: initialLoungeState.messages.map((message) => ({
+          ...message,
+        })),
+      };
     default:
       return state;
   }

@@ -3,6 +3,8 @@ import {
   mkdir,
   readFile,
   rename,
+  rm,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
@@ -44,6 +46,20 @@ function requireText(value: string, field: string) {
     throw new KnowledgeStoreError(`${field}不能为空`, "invalid-input");
   }
   return normalized;
+}
+
+function normalizeDocumentPath(value: string) {
+  const raw = requireText(value, "文档相对路径").replaceAll("\\", "/");
+  const parts = raw.split("/");
+  if (
+    raw.startsWith("/") ||
+    /^[A-Za-z]:\//.test(raw) ||
+    raw.includes("\0") ||
+    parts.some((part) => !part || part === "." || part === "..")
+  ) {
+    throw new KnowledgeStoreError("文档相对路径无效", "invalid-input");
+  }
+  return parts.join("/");
 }
 
 function normalizeBaseInput(input: CreateKnowledgeBaseInput) {
@@ -163,6 +179,10 @@ export function createFileKnowledgeStore(
           ...base,
           loungeVisible: base.loungeVisible !== false,
         }));
+        parsed.documents = parsed.documents.map((document) => ({
+          ...document,
+          relativePath: document.relativePath ?? document.fileName,
+        }));
         return parsed;
       }
     } catch (error) {
@@ -251,6 +271,40 @@ export function createFileKnowledgeStore(
       });
     },
 
+    async deleteBase(id) {
+      return exclusive(async () => {
+        const workspace = await readOrSeed();
+        const base = workspace.bases.find((item) => item.id === id);
+        if (!base) {
+          throw new KnowledgeStoreError("知识库不存在", "not-found");
+        }
+        const timestamp = now().toISOString();
+        workspace.bases = workspace.bases.filter((item) => item.id !== id);
+        workspace.documents = workspace.documents.filter(
+          (document) => document.baseId !== id,
+        );
+        workspace.chunks = workspace.chunks.filter(
+          (chunk) => chunk.baseId !== id,
+        );
+        workspace.updatedAt = timestamp;
+        delete workspace.warnings;
+        await persist(workspace);
+
+        try {
+          await rm(join(documentsDir, id), {
+            force: true,
+            recursive: true,
+          });
+        } catch {
+          workspace.warnings = [
+            `知识库“${base.name}”及索引已删除，但源文件目录清理失败；请稍后重试。`,
+          ];
+          await persist(workspace);
+        }
+        return cloneWorkspace(workspace);
+      });
+    },
+
     async ingestDocument(input) {
       return exclusive(async () => {
         const workspace = await readOrSeed();
@@ -260,7 +314,10 @@ export function createFileKnowledgeStore(
         if (!base) {
           throw new KnowledgeStoreError("知识库不存在", "not-found");
         }
-        const fileName = basename(requireText(input.fileName, "文件名"));
+        const incomingPath = normalizeDocumentPath(
+          input.relativePath ?? input.fileName,
+        );
+        const fileName = basename(incomingPath);
         if (extname(fileName).toLowerCase() !== ".md") {
           throw new KnowledgeStoreError(
             "当前仅支持 Markdown 文件",
@@ -285,7 +342,7 @@ export function createFileKnowledgeStore(
           : workspace.documents.findIndex(
               (document) =>
                 document.baseId === input.baseId &&
-                document.fileName === fileName,
+                (document.relativePath ?? document.fileName) === incomingPath,
             );
         if (input.documentId && existingIndex < 0) {
           throw new KnowledgeStoreError("待更新文档不存在", "not-found");
@@ -294,6 +351,10 @@ export function createFileKnowledgeStore(
         const timestamp = now().toISOString();
         const current =
           existingIndex >= 0 ? workspace.documents[existingIndex] : undefined;
+        const relativePath =
+          current && input.documentId && !input.relativePath
+            ? current.relativePath ?? incomingPath
+            : incomingPath;
         const documentId = current?.id ?? makeId("doc");
         const drafts = chunkMarkdown(content);
         if (drafts.length === 0) {
@@ -306,6 +367,7 @@ export function createFileKnowledgeStore(
           id: documentId,
           baseId: input.baseId,
           fileName,
+          relativePath,
           title:
             /^#\s+(.+)$/m.exec(content)?.[1].trim() ??
             fileName.replace(/\.md$/i, ""),
@@ -358,6 +420,89 @@ export function createFileKnowledgeStore(
         workspace.updatedAt = timestamp;
         delete workspace.warnings;
         await persist(workspace);
+        return cloneWorkspace(workspace);
+      });
+    },
+
+    async getDocumentContent(baseId, documentId) {
+      const workspace = await readOrSeed();
+      const document = workspace.documents.find(
+        (item) => item.id === documentId && item.baseId === baseId,
+      );
+      if (!document) {
+        throw new KnowledgeStoreError("文档不存在", "not-found");
+      }
+      try {
+        return {
+          document: structuredClone(document),
+          content: await readFile(
+            join(documentsDir, baseId, `${documentId}.md`),
+            "utf8",
+          ),
+        };
+      } catch (error) {
+        const missing =
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "ENOENT";
+        if (missing) {
+          throw new KnowledgeStoreError(
+            "文档原文不存在，请重新上传",
+            "not-found",
+          );
+        }
+        throw error;
+      }
+    },
+
+    async deleteDocument(baseId, documentId) {
+      return exclusive(async () => {
+        const workspace = await readOrSeed();
+        const document = workspace.documents.find(
+          (item) => item.id === documentId && item.baseId === baseId,
+        );
+        if (!document) {
+          throw new KnowledgeStoreError("文档不存在", "not-found");
+        }
+        const timestamp = now().toISOString();
+        workspace.documents = workspace.documents.filter(
+          (item) => item.id !== documentId,
+        );
+        workspace.chunks = workspace.chunks.filter(
+          (chunk) => chunk.documentId !== documentId,
+        );
+        workspace.bases = workspace.bases.map((base) =>
+          base.id === baseId
+            ? recalculateBase(
+                base,
+                workspace.documents,
+                workspace.chunks,
+                timestamp,
+              )
+            : base,
+        );
+        workspace.updatedAt = timestamp;
+        delete workspace.warnings;
+        await persist(workspace);
+
+        try {
+          await unlink(
+            join(documentsDir, baseId, `${documentId}.md`),
+          );
+        } catch (error) {
+          const missing =
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            error.code === "ENOENT";
+          if (!missing) {
+            workspace.warnings = [
+              "文档索引已删除，但源文件清理失败；请稍后重试。",
+            ];
+            await persist(workspace);
+          }
+        }
         return cloneWorkspace(workspace);
       });
     },

@@ -1,5 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { siteContent } from "@/content/site-content";
 import type { SiteContent } from "@/content/types";
@@ -94,5 +94,134 @@ describe("SectionRenderer", () => {
     externalLink.dispatchEvent(click);
 
     expect(click.defaultPrevented).toBe(true);
+  });
+
+  it("focuses the requested admin region once without replaying on copy edits", () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const previewFocus = {
+      section: "hero" as const,
+      selector: ".hero-actions",
+      label: "行动按钮",
+      requestId: 3,
+    };
+    const { rerender } = render(
+      <SectionRenderer
+        mode="preview"
+        previewFocus={previewFocus}
+        site={siteContent}
+      />,
+    );
+
+    const target = document.querySelector(".hero-actions");
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "auto",
+      block: "center",
+    });
+    expect(target).toHaveClass("is-admin-preview-focus");
+
+    rerender(
+      <SectionRenderer
+        mode="preview"
+        previewFocus={previewFocus}
+        site={{
+          ...siteContent,
+          hero: { ...siteContent.hero, statement: "只修改文案" },
+        }}
+      />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the requested identity-card face in draft preview", () => {
+    const { rerender } = render(
+      <SectionRenderer
+        mode="preview"
+        previewFocus={{
+          section: "identity-card",
+          identityFace: "back",
+          label: "知识与权限",
+          requestId: 8,
+        }}
+        site={siteContent}
+      />,
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Ricky 数字身份卡" }),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".identity-card")).toHaveAttribute(
+      "data-flipped",
+      "true",
+    );
+
+    rerender(
+      <SectionRenderer
+        mode="preview"
+        previewFocus={{
+          section: "identity-card",
+          identityFace: "front",
+          label: "名片正面",
+          requestId: 9,
+        }}
+        site={siteContent}
+      />,
+    );
+    expect(document.querySelector(".identity-card")).toHaveAttribute(
+      "data-flipped",
+      "false",
+    );
+  });
+
+  it("jumps directly from header navigation without replaying intermediate sections", () => {
+    const smoothScroll = vi.fn();
+    const directScroll = vi
+      .spyOn(window, "scrollTo")
+      .mockImplementation(() => undefined);
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: smoothScroll,
+    });
+
+    render(<SectionRenderer site={siteContent} />);
+
+    const navigation = screen.getByRole("navigation", { name: "主导航" });
+    const careerNavigation = within(navigation).getByRole("button", {
+      name: "职业路线",
+    });
+    fireEvent.click(careerNavigation);
+
+    expect(directScroll).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: "auto" }),
+    );
+    expect(smoothScroll).not.toHaveBeenCalled();
+    expect(careerNavigation).toHaveAttribute("aria-current", "location");
+
+    directScroll.mockRestore();
+  });
+
+  it("opens the lounge directly from header navigation without the connecting overlay", () => {
+    const directScroll = vi
+      .spyOn(window, "scrollTo")
+      .mockImplementation(() => undefined);
+
+    render(<SectionRenderer site={siteContent} />);
+
+    const navigation = screen.getByRole("navigation", { name: "主导航" });
+    fireEvent.click(
+      within(navigation).getByRole("button", {
+        name: "AI 会客厅",
+      }),
+    );
+
+    expect(directScroll).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: "auto" }),
+    );
+    expect(screen.queryByText("CONNECTING")).not.toBeInTheDocument();
+
+    directScroll.mockRestore();
   });
 });

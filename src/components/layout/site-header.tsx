@@ -15,12 +15,14 @@ interface SiteHeaderProps {
   sections: SectionConfig[];
   activeSection?: SiteSectionId;
   onNavigate: (section: SiteSectionId) => void;
+  ctaLabel?: string;
 }
 
 export function SiteHeader({
   brand,
   sections,
   activeSection,
+  ctaLabel = "进入 AI 会客厅",
   onNavigate,
 }: SiteHeaderProps) {
   const enabledSections = [...sections]
@@ -65,7 +67,7 @@ export function SiteHeader({
           type="button"
         >
           <MessageCircle aria-hidden="true" size={16} />
-          进入 AI 会客厅
+          {ctaLabel}
         </button>
       </TargetLock>
     </header>

@@ -36,8 +36,23 @@ const EMPTY_MODEL: ModelDraft = {
   modelId: "",
   enabled: true,
   timeoutMs: 30_000,
+  contextWindowTokens: 128_000,
   maxOutputTokens: 1_200,
 };
+
+const MODEL_CHANGE_EVENT = "ricky:model-changed";
+const MODEL_CHANNEL = "ricky-twin-model";
+
+function announceModelChange(modelId: string) {
+  window.dispatchEvent(
+    new CustomEvent(MODEL_CHANGE_EVENT, { detail: { modelId } }),
+  );
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(MODEL_CHANNEL);
+    channel.postMessage({ type: "changed", modelId });
+    channel.close();
+  }
+}
 
 function draftFromModel(model: AdminModelConnection): ModelDraft {
   return {
@@ -48,6 +63,7 @@ function draftFromModel(model: AdminModelConnection): ModelDraft {
     modelId: model.modelId,
     enabled: model.enabled,
     timeoutMs: model.timeoutMs,
+    contextWindowTokens: model.contextWindowTokens ?? 128_000,
     maxOutputTokens: model.maxOutputTokens,
   };
 }
@@ -208,6 +224,9 @@ export function ModelManager() {
       if (!result.ok) {
         setError(result.message);
         return;
+      }
+      if (action === "activate") {
+        announceModelChange(selectedId);
       }
       setMessage(result.message ?? successFallback);
     } catch {
@@ -400,6 +419,19 @@ export function ModelManager() {
               }
               type="number"
               value={draft.maxOutputTokens}
+            />
+            <TextField
+              aria-label="上下文窗口 Token"
+              hint="例如 K3 1M 填写 1048576"
+              label="上下文窗口 Token"
+              min={1}
+              onChange={(event) =>
+                change({
+                  contextWindowTokens: Number(event.target.value),
+                })
+              }
+              type="number"
+              value={draft.contextWindowTokens}
             />
           </div>
           <ToggleField

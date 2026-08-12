@@ -8,6 +8,44 @@ import type { SiteContent } from "@/content/types";
 import { LivePreview } from "./live-preview";
 
 describe("LivePreview", () => {
+  it("sends the selected editor region to the preview frame", async () => {
+    const focus = {
+      section: "projects" as const,
+      selector: ".project-capability-map",
+      label: "项目关联能力",
+      requestId: 7,
+    };
+    const { rerender } = render(
+      <LivePreview
+        canPublish
+        content={siteContent}
+        focus={focus}
+        onPublish={vi.fn(async () => true)}
+      />,
+    );
+    const frame = screen.getByTitle<HTMLIFrameElement>("前台实时预览");
+    const postMessage = vi.spyOn(frame.contentWindow!, "postMessage");
+
+    rerender(
+      <LivePreview
+        canPublish
+        content={siteContent}
+        focus={{ ...focus, requestId: 8 }}
+        onPublish={vi.fn(async () => true)}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          focus: { ...focus, requestId: 8 },
+          type: "ricky:content-preview",
+        }),
+        window.location.origin,
+      ),
+    );
+  });
+
   it("switches among the exact public breakpoints and posts live draft changes", async () => {
     const { rerender } = render(
       <LivePreview
