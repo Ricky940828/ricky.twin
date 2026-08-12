@@ -1,4 +1,5 @@
 import { CURRENT_DATA_SCHEMA_VERSION } from "@/server/data/data-schema";
+import { resolveApplicationRuntime, type RuntimeEnvironment } from "@/server/app-runtime";
 
 import { compareVersions } from "./semver";
 import { createFileUpdateStore, type UpdateStore } from "./file-update-store";
@@ -8,7 +9,9 @@ import type { UpdateManifest, UpdateSystemStatus } from "./update-types";
 interface CreateUpdateServiceOptions {
   currentVersion: string;
   currentCommit: string;
+  runtimeEnvironment?: RuntimeEnvironment;
   dataSchemaVersion: number;
+  releaseCheckEnabled?: boolean;
   releaseProvider: ReleaseProvider;
   store: UpdateStore;
   now?: () => Date;
@@ -37,9 +40,11 @@ export function createUpdateService(options: CreateUpdateServiceOptions) {
     return {
       currentVersion: options.currentVersion,
       currentCommit: options.currentCommit,
+      runtimeEnvironment: options.runtimeEnvironment ?? "production",
       dataSchemaVersion: options.dataSchemaVersion,
       updaterVersion: state.updaterVersion,
       updaterEnabled: Boolean(state.updaterVersion),
+      releaseCheckEnabled: options.releaseCheckEnabled ?? true,
       latestManifest: latest,
       updateAvailable: Boolean(latest && compareVersions(latest.version, options.currentVersion) > 0),
       compatible: result.compatible,
@@ -79,11 +84,15 @@ let singleton: ReturnType<typeof createUpdateService> | undefined;
 
 export function getUpdateService() {
   const repository = process.env.RICKY_UPDATE_REPOSITORY ?? "Ricky940828/ricky.twin";
+  const releaseToken = process.env.RICKY_GITHUB_RELEASE_TOKEN ?? "";
+  const runtime = resolveApplicationRuntime();
   singleton ??= createUpdateService({
-    currentVersion: process.env.RICKY_APP_VERSION ?? process.env.npm_package_version ?? "0.1.0",
-    currentCommit: process.env.RICKY_BUILD_COMMIT ?? "development",
+    currentVersion: runtime.version,
+    currentCommit: runtime.commit,
+    runtimeEnvironment: runtime.environment,
     dataSchemaVersion: CURRENT_DATA_SCHEMA_VERSION,
-    releaseProvider: createGitHubReleaseProvider({ repository, token: process.env.RICKY_GITHUB_RELEASE_TOKEN ?? "" }),
+    releaseCheckEnabled: Boolean(releaseToken.trim()),
+    releaseProvider: createGitHubReleaseProvider({ repository, token: releaseToken }),
     store: createFileUpdateStore(),
   });
   return singleton;

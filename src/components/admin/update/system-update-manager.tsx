@@ -90,6 +90,7 @@ export function SystemUpdateManager() {
   }
 
   const hasActiveJob = Boolean(status.job && ACTIVE_UPDATE_PHASES.has(status.job.phase));
+  const isDevelopment = status.runtimeEnvironment === "development";
   const canApply = status.updateAvailable && status.compatible && status.updaterEnabled && !hasActiveJob;
   const releaseTitle = !status.latestManifest
     ? "尚未检查更新"
@@ -101,7 +102,7 @@ export function SystemUpdateManager() {
       {error ? <div className="admin-form-error" role="alert">{error}</div> : null}
       <header className="admin-update__hero">
         <div><span className="admin-kicker">VERSION &amp; RECOVERY</span><h2>系统更新</h2><p>在一个地方检查版本、备份数据、更新重启和恢复上一版本。</p></div>
-        <div className="admin-update__version"><small>当前运行</small><strong>当前版本 {status.currentVersion}</strong><span>构建 {status.currentCommit.slice(0, 12)} · 数据结构 v{status.dataSchemaVersion}</span></div>
+        <div className="admin-update__version"><small>{isDevelopment ? "本地开发预览" : "当前运行"}</small><strong>当前版本 {status.currentVersion}</strong><span>构建 {status.currentCommit.slice(0, 12)} · 数据结构 v{status.dataSchemaVersion}</span></div>
       </header>
 
       <div className="admin-update__grid">
@@ -121,11 +122,11 @@ export function SystemUpdateManager() {
       {status.job ? <div className={`admin-update__progress is-${status.job.phase}`} role="status"><RefreshCw size={18} aria-hidden /><div><strong>{phaseLabels[status.job.phase] || status.job.phase}</strong><p>{status.job.message}</p></div></div> : null}
 
       <div className="admin-update__actions">
-        <button className="admin-button" disabled={busy !== null || hasActiveJob} onClick={() => void run("check")} type="button"><RefreshCw size={16} aria-hidden />{busy === "check" ? "正在检测" : "检查更新"}</button>
+        <button className="admin-button" disabled={busy !== null || hasActiveJob || !status.releaseCheckEnabled} onClick={() => void run("check")} type="button"><RefreshCw size={16} aria-hidden />{busy === "check" ? "正在检测" : "检查更新"}</button>
         <button className="admin-button is-primary" disabled={!canApply || busy !== null} onClick={() => void run("apply")} type="button"><Rocket size={16} aria-hidden />一键更新并重启</button>
         <button className="admin-button" disabled={!status.lastBackupId || busy !== null || hasActiveJob} onClick={() => void run("rollback")} type="button"><History size={16} aria-hidden />回滚上一版本</button>
       </div>
-      <div className="admin-update__updater"><CheckCircle2 size={15} aria-hidden /><span>{status.updaterEnabled ? `宿主更新器 ${status.updaterVersion} 已连接` : "宿主更新器未启用；当前只能查看版本"}</span></div>
+      <div className="admin-update__updater"><CheckCircle2 size={15} aria-hidden /><span>{isDevelopment ? "本地开发预览：正式部署到服务器后启用版本检查、一键更新、重启与回滚" : status.updaterEnabled ? `宿主更新器 ${status.updaterVersion} 已连接` : "宿主更新器未启用；请先完成服务器托管部署"}</span></div>
     </section>
   );
 }

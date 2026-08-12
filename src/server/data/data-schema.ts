@@ -1,6 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { resolveApplicationRuntime } from "@/server/app-runtime";
+
 export const CURRENT_DATA_SCHEMA_VERSION = 1;
 
 export interface DataSchemaMeta {
@@ -87,9 +89,7 @@ export function initializeApplicationDataRoot(
     process.env.RICKY_CONTENT_DATA_DIR ??
     join(process.cwd(), ".ricky-twin-data"),
   appVersion =
-    process.env.RICKY_APP_VERSION ??
-    process.env.npm_package_version ??
-    "0.1.0",
+    resolveApplicationRuntime().version,
 ) {
   let pending = initializations.get(dataDir);
   if (!pending) {

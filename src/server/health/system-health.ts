@@ -1,4 +1,5 @@
 import { getAgentStore } from "@/server/agent/agent-service";
+import { resolveApplicationRuntime } from "@/server/app-runtime";
 import { getContentService } from "@/server/content/content-service";
 import { CURRENT_DATA_SCHEMA_VERSION, initializeApplicationDataRoot } from "@/server/data/data-schema";
 import { getKnowledgeService } from "@/server/knowledge/knowledge-service";
@@ -34,9 +35,10 @@ export function createSystemHealthCheck(options: HealthOptions) {
 }
 
 export function getSystemHealthCheck() {
+  const runtime = resolveApplicationRuntime();
   return createSystemHealthCheck({
-    version: process.env.RICKY_APP_VERSION ?? process.env.npm_package_version ?? "0.1.0",
-    commit: process.env.RICKY_BUILD_COMMIT ?? "development",
+    version: runtime.version,
+    commit: runtime.commit,
     dataSchemaVersion: CURRENT_DATA_SCHEMA_VERSION,
     probes: {
       content: async () => {

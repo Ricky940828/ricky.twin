@@ -54,9 +54,11 @@ export interface UpdateJob {
 export interface UpdateSystemStatus {
   currentVersion: string;
   currentCommit: string;
+  runtimeEnvironment: "development" | "production";
   dataSchemaVersion: number;
   updaterVersion: string | null;
   updaterEnabled: boolean;
+  releaseCheckEnabled: boolean;
   latestManifest: UpdateManifest | null;
   updateAvailable: boolean;
   compatible: boolean;

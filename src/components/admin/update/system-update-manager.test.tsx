@@ -9,9 +9,11 @@ import { SystemUpdateManager } from "./system-update-manager";
 const baseStatus: UpdateSystemStatus = {
   currentVersion: "0.1.0",
   currentCommit: "33125af",
+  runtimeEnvironment: "production",
   dataSchemaVersion: 1,
   updaterVersion: "1.0.0",
   updaterEnabled: true,
+  releaseCheckEnabled: true,
   latestManifest: {
     schemaVersion: 1,
     version: "0.2.0",
@@ -83,6 +85,31 @@ describe("SystemUpdateManager", () => {
 
     expect(await screen.findByText("宿主更新器尚未安装或未上报状态")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "一键更新并重启" })).toBeDisabled();
+  });
+
+  it("explains that managed updates are intentionally unavailable in local development", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      ok: true,
+      status: {
+        ...baseStatus,
+        currentVersion: "0.2.0",
+        currentCommit: "development",
+        runtimeEnvironment: "development",
+        updaterEnabled: false,
+        releaseCheckEnabled: false,
+        compatible: true,
+        compatibilityMessage: "尚未检查最新版本",
+        latestManifest: null,
+      },
+    })));
+
+    render(<SystemUpdateManager />);
+
+    expect(await screen.findByText("本地开发预览")).toBeInTheDocument();
+    expect(screen.getByText("当前版本 0.2.0")).toBeInTheDocument();
+    expect(screen.getByText(/正式部署到服务器后启用/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "一键更新并重启" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "检查更新" })).toBeDisabled();
   });
 
   it("keeps version checks available after a previous update has finished", async () => {
