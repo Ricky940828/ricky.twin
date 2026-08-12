@@ -131,3 +131,9 @@ pnpm lint
 pnpm build
 pnpm test:e2e
 ```
+
+## 许可证
+
+Copyright 2026 Ricky Li（李富豪）。
+
+本项目采用 [Apache License 2.0](LICENSE) 开源。你可以在遵守许可证条款的前提下使用、修改和分发本项目，包括商业用途。
