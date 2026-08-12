@@ -9,6 +9,7 @@ import {
   Database,
   LogOut,
   Save,
+  RefreshCw,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -28,7 +29,8 @@ export type AdminModuleId =
   | "knowledge"
   | "agent"
   | "models"
-  | "activity";
+  | "activity"
+  | "update";
 
 const MODULE_META: Record<
   AdminModuleId,
@@ -39,6 +41,7 @@ const MODULE_META: Record<
   agent: { eyebrow: "AGENT PROTOCOL", label: "Agent 管理" },
   models: { eyebrow: "MODEL CONNECTIONS", label: "模型连接" },
   activity: { eyebrow: "VISIT & RUN LOGS", label: "访客与运行" },
+  update: { eyebrow: "VERSION & RECOVERY", label: "系统更新" },
 };
 
 const MODULE_ITEMS: Array<{
@@ -50,6 +53,7 @@ const MODULE_ITEMS: Array<{
   { id: "agent", label: "Agent 管理", icon: Bot },
   { id: "models", label: "模型连接", icon: Cable },
   { id: "activity", label: "访客与运行", icon: Activity },
+  { id: "update", label: "系统更新", icon: RefreshCw },
 ];
 
 const SAVE_LABEL: Record<SaveState, string> = {

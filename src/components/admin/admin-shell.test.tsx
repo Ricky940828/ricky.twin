@@ -67,4 +67,23 @@ describe("AdminShell content navigation", () => {
     expect(onModuleChange).toHaveBeenCalledWith("content");
     expect(onEditorChange).toHaveBeenCalledWith("brand");
   });
+
+  it("offers a single system update entry under system capabilities", () => {
+    render(
+      <AdminShell
+        activeEditor="home"
+        activeModule="content"
+        onEditorChange={vi.fn()}
+        onLogout={vi.fn()}
+        onModuleChange={vi.fn()}
+        onSave={vi.fn()}
+        saveState="saved"
+        versionLabel="正式版本 test"
+      >
+        <div>编辑区</div>
+      </AdminShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "系统更新" })).toBeInTheDocument();
+  });
 });

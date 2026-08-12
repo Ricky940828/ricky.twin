@@ -7154,3 +7154,27 @@ a {
     grid-template-columns: 1fr;
   }
 }
+/* Managed system updates */
+.admin-update { display: grid; gap: 22px; padding: 28px; }
+.admin-update__hero, .admin-update__grid, .admin-update__actions, .admin-update__card-title, .admin-update__progress, .admin-update__updater { display: flex; }
+.admin-update__hero { align-items: flex-start; justify-content: space-between; gap: 28px; padding: 28px; border: 1px solid rgba(172, 103, 255, .24); border-radius: 26px; background: linear-gradient(135deg, rgba(41, 25, 57, .92), rgba(13, 10, 18, .96)); }
+.admin-update__hero h2 { margin: 8px 0; font-size: clamp(28px, 3vw, 44px); }
+.admin-update__hero p, .admin-update__card p, .admin-update__card li { color: rgba(240, 235, 247, .68); line-height: 1.7; }
+.admin-update__version { min-width: 250px; padding: 18px 20px; border: 1px solid rgba(184, 117, 255, .26); border-radius: 18px; background: rgba(96, 49, 130, .15); }
+.admin-update__version small, .admin-update__version span, .admin-update__version strong { display: block; }
+.admin-update__version strong { margin: 7px 0; font-size: 20px; }
+.admin-update__version span, .admin-update__version small { color: rgba(240, 235, 247, .55); }
+.admin-update__grid { gap: 18px; }
+.admin-update__card { flex: 1; padding: 24px; border: 1px solid rgba(172, 103, 255, .18); border-radius: 22px; background: rgba(19, 14, 27, .82); }
+.admin-update__card-title { align-items: flex-start; gap: 12px; color: #c58bff; }
+.admin-update__card-title h3 { margin: 4px 0 16px; color: #f7f3fb; }
+.admin-update__card ul { padding-left: 20px; }
+.admin-update__card .is-safe, .admin-update__card .is-warning { display: flex; align-items: center; gap: 8px; }
+.admin-update__card .is-safe { color: #a9e6cb; }.admin-update__card .is-warning { color: #f4c98b; }
+.admin-update__progress { align-items: center; gap: 14px; padding: 18px 20px; border: 1px solid rgba(172, 103, 255, .28); border-radius: 18px; background: rgba(97, 48, 140, .13); }
+.admin-update__progress svg { animation: spin 1.4s linear infinite; color: #c58bff; }
+.admin-update__progress p { margin: 4px 0 0; color: rgba(240, 235, 247, .62); }
+.admin-update__actions { flex-wrap: wrap; gap: 12px; }
+.admin-update__updater { align-items: center; gap: 8px; color: rgba(240, 235, 247, .55); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 800px) { .admin-update__hero, .admin-update__grid { flex-direction: column; }.admin-update__version { width: 100%; }.admin-update { padding: 16px; } }

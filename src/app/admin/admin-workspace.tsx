@@ -25,6 +25,7 @@ import { KnowledgeManager } from "@/components/admin/knowledge/knowledge-manager
 import { AgentManager } from "@/components/admin/agent/agent-manager";
 import { ModelManager } from "@/components/admin/models/model-manager";
 import { ActivityManager } from "@/components/admin/activity/activity-manager";
+import { SystemUpdateManager } from "@/components/admin/update/system-update-manager";
 
 type SessionState = "checking" | "unauthenticated" | "authenticated";
 
@@ -260,8 +261,10 @@ export function AdminWorkspace() {
         <AgentManager />
       ) : activeModule === "models" ? (
         <ModelManager />
-      ) : (
+      ) : activeModule === "activity" ? (
         <ActivityManager />
+      ) : (
+        <SystemUpdateManager />
       )}
     </AdminShell>
   );
