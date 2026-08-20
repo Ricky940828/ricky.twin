@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "0.2.1",
-  "releaseTag": "v0.2.1",
+  "version": "0.2.2",
+  "releaseTag": "v0.2.2",
   "image": "ghcr.io/ricky940828/ricky.twin@sha256:REPLACE_WITH_64_CHARACTER_DIGEST",
   "publishedAt": "2026-08-12T00:00:00Z",
   "minimumDataSchemaVersion": 1,

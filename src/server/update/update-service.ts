@@ -91,7 +91,7 @@ export function getUpdateService() {
     currentCommit: runtime.commit,
     runtimeEnvironment: runtime.environment,
     dataSchemaVersion: CURRENT_DATA_SCHEMA_VERSION,
-    releaseCheckEnabled: Boolean(releaseToken.trim()),
+    releaseCheckEnabled: true,
     releaseProvider: createGitHubReleaseProvider({ repository, token: releaseToken }),
     store: createFileUpdateStore(),
   });

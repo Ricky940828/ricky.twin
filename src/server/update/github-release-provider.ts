@@ -62,16 +62,15 @@ export function createGitHubReleaseProvider(
   options: GitHubReleaseProviderOptions,
 ): ReleaseProvider {
   const fetcher = options.fetcher ?? fetch;
-  const headers = {
+  const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${options.token}`,
     "X-GitHub-Api-Version": "2022-11-28",
   };
+  if (options.token.trim()) {
+    headers.Authorization = `Bearer ${options.token}`;
+  }
   return {
     async getLatest() {
-      if (!options.token.trim()) {
-        throw new Error("未配置 GitHub Release 只读 Token");
-      }
       const releaseResponse = await fetcher(
         `https://api.github.com/repos/${options.repository}/releases/latest`,
         { headers, cache: "no-store" },
@@ -107,4 +106,3 @@ export function createGitHubReleaseProvider(
     },
   };
 }
-

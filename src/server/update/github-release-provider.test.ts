@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createGitHubReleaseProvider } from "./github-release-provider";
 
-describe("private GitHub release provider", () => {
+describe("GitHub release provider", () => {
   it("loads and validates the manifest asset from the latest release", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -49,6 +49,52 @@ describe("private GitHub release provider", () => {
     );
   });
 
+  it("loads a public release without sending an authorization header", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          tag_name: "v0.2.1",
+          assets: [
+            {
+              name: "update-manifest.json",
+              url: "https://api.github.test/assets/public",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          schemaVersion: 1,
+          version: "0.2.1",
+          releaseTag: "v0.2.1",
+          image: "ghcr.io/ricky940828/ricky.twin@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          publishedAt: "2026-08-20T00:00:00.000Z",
+          minimumDataSchemaVersion: 1,
+          maximumDataSchemaVersion: 1,
+          requiredUpdaterVersion: "1.0.0",
+          notes: ["公开发布"],
+        }),
+      );
+
+    const provider = createGitHubReleaseProvider({
+      repository: "Ricky940828/ricky.twin",
+      token: "",
+      fetcher,
+    });
+
+    await expect(provider.getLatest()).resolves.toMatchObject({
+      version: "0.2.1",
+    });
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "https://api.github.com/repos/Ricky940828/ricky.twin/releases/latest",
+      expect.objectContaining({
+        headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+      }),
+    );
+  });
+
   it("rejects a release whose image is outside the fixed repository", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -83,4 +129,3 @@ describe("private GitHub release provider", () => {
     ).rejects.toThrow("发布镜像不在允许范围内");
   });
 });
-
