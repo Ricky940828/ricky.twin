@@ -64,21 +64,21 @@ RICKY_CONTENT_DATA_DIR=.ricky-twin-data
 
 更详细的运行逻辑见 [Agent 与 RAG 架构说明](docs/architecture/agent-rag-v1.md)。
 
-## 私有部署与管理端在线升级
+## 生产部署与管理端在线升级
 
 生产环境采用“应用镜像”和“持久数据”分离的方式：版本更新只替换 Docker 镜像，前台内容、知识库 Markdown、Agent/模型配置、密钥和运行记录始终保存在宿主机 `/opt/ricky-twin` 下，不写进镜像，也不会被 GitHub 版本覆盖。
 
 管理后台的“系统能力 → 系统更新”集中提供：
 
 - 当前版本、构建提交和数据结构版本；
-- 检查私有 GitHub Release 最新版本；
+- 检查 GitHub Release 最新版本；
 - 一键备份、更新并重启应用；
 - 新版健康检查失败时自动恢复旧镜像和完整数据；
 - 最近一次更新状态及“回滚上一版本”入口。
 
 ### 首次部署
 
-服务器需安装 Docker Engine、Docker Compose 插件、`jq`、`curl` 和 `systemd`。从本私有仓库取得代码后执行：
+服务器需安装 Docker Engine、Docker Compose 插件、`jq`、`curl` 和 `systemd`。从仓库取得代码后执行：
 
 ```bash
 sudo ./deploy/install-managed-updates.sh
@@ -87,8 +87,8 @@ sudo ./deploy/install-managed-updates.sh
 随后完成三项配置：
 
 1. 编辑 `/opt/ricky-twin/config/.env`。`RICKY_ADMIN_SESSION_SECRET` 和 `RICKY_SECRETS_KEY` 必须长期保持不变；后者变化会导致已有模型 Key 和联系方式密文无法解密。
-2. 使用仅有私有包读取权限的 Token 登录 GHCR：`echo '<TOKEN>' | docker login ghcr.io -u '<USER>' --password-stdin`。
-3. 把首个 Release 的镜像 digest 填入 `/opt/ricky-twin/deploy/image.env`，再按安装脚本末尾提示启动。
+2. 把 Release 的镜像 digest 和独立宿主端口填入 `/opt/ricky-twin/deploy/image.env`；默认推荐 `RICKY_TWIN_HOST_PORT=3100`，且只绑定 `127.0.0.1`，不会占用或暴露现有业务端口。
+3. 公开 GHCR 镜像无需登录即可启动；若后续改为私有包，再使用仅读取 Token 登录 GHCR。
 
 如果本机已经有 `.ricky-twin-data`，首次部署前先完整复制到服务器数据目录，再修正容器用户权限：
 
@@ -99,18 +99,18 @@ sudo chown -R 1001:1001 /opt/ricky-twin/data
 
 这一步迁移的是既有知识库和后台配置；之后的日常版本更新不会再复制或覆盖这些内容。
 
-私有 Release 检测 Token 配置在 `/opt/ricky-twin/config/.env` 的 `RICKY_GITHUB_RELEASE_TOKEN`，仅授予 `Ricky940828/ricky.twin` 仓库的 Contents: Read。它与 GHCR 拉取凭证用途不同，均不得提交 Git。
+公开 Release 检测不需要 Token，`RICKY_GITHUB_RELEASE_TOKEN` 保持为空即可。若后续改回私有仓库，该 Token 仅授予 `Ricky940828/ricky.twin` 仓库的 Contents: Read，且不得提交 Git。
 
 ### 发布一个可更新版本
 
 先把 `package.json` 的版本号按语义化版本递增并推送代码，再创建同名标签，例如：
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.1
+git push origin v0.2.1
 ```
 
-私有 GitHub Actions 会依次执行测试、类型检查、Lint、构建，推送按 digest 固定的私有 GHCR 镜像，并生成 `update-manifest.json` 与正式 Release。管理端只识别正式 Release，不把 `main` 上尚未发布的代码误判为更新。
+GitHub Actions 会依次执行测试、类型检查、Lint、构建，推送按 digest 固定的 GHCR 镜像，并生成 `update-manifest.json` 与正式 Release。管理端只识别正式 Release，不把 `main` 上尚未发布的代码误判为更新。
 
 ### 数据保护与灾难恢复
 

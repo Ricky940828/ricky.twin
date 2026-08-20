@@ -1,4 +1,4 @@
-name: Publish private application release
+name: Publish application release
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
           pnpm lint
           pnpm build
 
-      - name: Log in to private GHCR
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -89,7 +89,7 @@ jobs:
             '{schemaVersion:1,version:$version,releaseTag:$tag,image:$image,publishedAt:$published,minimumDataSchemaVersion:1,maximumDataSchemaVersion:1,requiredUpdaterVersion:"1.0.0",notes:["管理端集中展示版本与更新状态","支持一键更新、重启和失败自动回滚","升级保留知识库、前台内容、Agent、模型配置与运行记录"]}' \
             > update-manifest.json
 
-      - name: Create private GitHub Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

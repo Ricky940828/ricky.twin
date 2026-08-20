@@ -21,7 +21,7 @@ async function fixture(options: { healthFails?: boolean } = {}) {
   await Promise.all([mkdir(updateDir, { recursive: true }), mkdir(deployDir), mkdir(backupDir), mkdir(binDir)]);
   await writeFile(join(dataDir, "knowledge-marker.md"), "must survive\n", "utf8");
   await writeFile(join(dataDir, "meta.json"), JSON.stringify({ dataSchemaVersion: 1, appVersion: "0.1.0", updatedAt: "2026-08-12T00:00:00.000Z" }) + "\n", "utf8");
-  await writeFile(join(deployDir, "image.env"), "RICKY_TWIN_IMAGE=ghcr.io/ricky940828/ricky.twin@sha256:" + "b".repeat(64) + "\nRICKY_APP_VERSION=0.1.0\n", "utf8");
+  await writeFile(join(deployDir, "image.env"), "RICKY_TWIN_IMAGE=ghcr.io/ricky940828/ricky.twin@sha256:" + "b".repeat(64) + "\nRICKY_APP_VERSION=0.1.0\nRICKY_TWIN_HOST_PORT=3100\n", "utf8");
   await writeFile(join(deployDir, "compose.yaml"), "services: {}\n", "utf8");
   await writeFile(join(updateDir, "state.json"), JSON.stringify({ updaterVersion: "1.0.0", job: null, lastBackupId: null }) + "\n", "utf8");
   await writeFile(join(updateDir, "request.json"), JSON.stringify({
@@ -34,7 +34,7 @@ async function fixture(options: { healthFails?: boolean } = {}) {
   const curl = join(binDir, "curl");
   await writeFile(curl, options.healthFails
     ? `#!/bin/sh\ncount_file="${join(root, "curl-count")}"\ncount=0; [ -f "$count_file" ] && count=$(cat "$count_file"); count=$((count+1)); echo "$count" > "$count_file"; if [ "$count" -eq 1 ]; then echo '{"ok":false}'; else echo '{"ok":true,"version":"0.1.0","dataSchemaVersion":1}'; fi\n`
-    : `#!/bin/sh\necho '{"ok":true,"version":"0.2.0","dataSchemaVersion":1}'\n`, "utf8");
+    : `#!/bin/sh\necho "$@" >> "${join(root, "curl.log")}"\necho '{"ok":true,"version":"0.2.0","dataSchemaVersion":1}'\n`, "utf8");
   await chmod(curl, 0o755);
   return { root, dataDir, updateDir, deployDir, backupDir, binDir };
 }
@@ -67,6 +67,15 @@ describe("host managed updater", () => {
     const state = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
     expect(state.lastCheckedAt).toBe("2026-08-12T00:00:00.000Z");
     expect(state.latestManifest).toEqual({ version: "0.2.0", notes: ["keep"] });
+  });
+
+  it("uses and preserves the dedicated host port across updates", async () => {
+    const item = await fixture();
+
+    await run("bash", [updater], { env: { ...process.env, PATH: `${item.binDir}:${process.env.PATH}`, RICKY_UPDATE_ROOT: item.root, RICKY_UPDATE_HEALTH_RETRIES: "1", RICKY_UPDATE_HEALTH_DELAY: "0" } });
+
+    expect(await readFile(join(item.root, "curl.log"), "utf8")).toContain("http://127.0.0.1:3100/api/health");
+    expect(await readFile(join(item.deployDir, "image.env"), "utf8")).toContain("RICKY_TWIN_HOST_PORT=3100");
   });
 
   it("restores the old image and data when the new version fails health checks", async () => {

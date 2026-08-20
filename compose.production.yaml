@@ -11,7 +11,7 @@ services:
       PORT: "3000"
       HOSTNAME: 0.0.0.0
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${RICKY_TWIN_HOST_PORT:?RICKY_TWIN_HOST_PORT is required}:3000"
     volumes:
       - ../data:/app/data
     read_only: true

@@ -15,7 +15,10 @@ STATE_PATH="$UPDATE_DIR/state.json"
 LOCK_PATH="$UPDATE_DIR/updater.lock"
 IMAGE_ENV="$DEPLOY_DIR/image.env"
 COMPOSE_FILE="$DEPLOY_DIR/compose.yaml"
-HEALTH_URL="${RICKY_UPDATE_HEALTH_URL:-http://127.0.0.1:3000/api/health}"
+HOST_PORT="$(sed -n 's/^RICKY_TWIN_HOST_PORT=//p' "$IMAGE_ENV" 2>/dev/null | head -1)"
+HOST_PORT="${HOST_PORT:-3000}"
+[[ "$HOST_PORT" =~ ^[0-9]{1,5}$ ]] || { echo "Invalid Ricky Twin host port" >&2; exit 2; }
+HEALTH_URL="${RICKY_UPDATE_HEALTH_URL:-http://127.0.0.1:$HOST_PORT/api/health}"
 HEALTH_RETRIES="${RICKY_UPDATE_HEALTH_RETRIES:-30}"
 HEALTH_DELAY="${RICKY_UPDATE_HEALTH_DELAY:-2}"
 ALLOWED_IMAGE_PREFIX="ghcr.io/ricky940828/ricky.twin@sha256:"
@@ -161,7 +164,7 @@ docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-
   -e RICKY_CONTENT_DATA_DIR=/data -e RICKY_APP_VERSION="$target_version" -v "$DATA_DIR:/data" \
   "$target_image" node /app/deploy/data-maintenance.mjs migrate
 
-printf 'RICKY_TWIN_IMAGE=%s\nRICKY_APP_VERSION=%s\n' "$target_image" "$target_version" > "$IMAGE_ENV.tmp"
+printf 'RICKY_TWIN_IMAGE=%s\nRICKY_APP_VERSION=%s\nRICKY_TWIN_HOST_PORT=%s\n' "$target_image" "$target_version" "$HOST_PORT" > "$IMAGE_ENV.tmp"
 mv "$IMAGE_ENV.tmp" "$IMAGE_ENV"
 write_state restarting "正在重启应用" "$backup_id"
 compose up -d --remove-orphans

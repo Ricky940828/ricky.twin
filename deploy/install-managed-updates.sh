@@ -50,6 +50,6 @@ install -m 0644 "$SOURCE_DIR/deploy/systemd/ricky-twin-update.path" /etc/systemd
 systemctl daemon-reload
 systemctl enable --now ricky-twin-update.path
 
-echo "管理更新器已安装。首次启动前，请完成私有 GHCR 登录："
-echo "  echo '<PACKAGE_READ_TOKEN>' | docker login ghcr.io -u '<GITHUB_USER>' --password-stdin"
-echo "然后执行：docker compose --env-file $ROOT/deploy/image.env -f $ROOT/deploy/compose.yaml up -d"
+echo "管理更新器已安装。公开 GHCR 镜像无需登录；私有镜像需先配置仅读取凭证。"
+echo "确认 image.env 中的镜像、版本和独立宿主端口后执行："
+echo "  docker compose --env-file $ROOT/deploy/image.env -f $ROOT/deploy/compose.yaml up -d"

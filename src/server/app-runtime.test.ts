@@ -7,7 +7,7 @@ describe("application runtime metadata", () => {
     expect(
       resolveApplicationRuntime({ NODE_ENV: "development" }),
     ).toEqual({
-      version: "0.2.0",
+      version: "0.2.1",
       commit: "development",
       environment: "development",
     });
