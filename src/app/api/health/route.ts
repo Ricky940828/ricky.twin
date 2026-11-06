@@ -1,9 +1,9 @@
-import { getSystemHealthCheck } from "@/server/health/system-health";
+import { getSystemLivenessCheck } from "@/server/health/system-health";
 
 export async function GET() {
-  const health = await getSystemHealthCheck()();
+  const health = await getSystemLivenessCheck()();
   return Response.json(health, {
-    status: health.ok ? 200 : 503,
+    status: 200,
     headers: { "Cache-Control": "no-store" },
   });
 }
