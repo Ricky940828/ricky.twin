@@ -85,5 +85,8 @@ describe("AdminShell content navigation", () => {
     );
 
     expect(screen.getByRole("button", { name: "系统更新" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "运营与运行中心" }),
+    ).toBeInTheDocument();
   });
 });

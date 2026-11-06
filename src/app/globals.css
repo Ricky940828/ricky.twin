@@ -6742,6 +6742,93 @@ a {
   color: rgb(216 180 254 / 0.6);
 }
 
+.admin-operations-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgb(192 132 252 / 0.1);
+  border-radius: 15px;
+  padding: 8px;
+  background: rgb(10 8 14 / 0.72);
+}
+
+.admin-operations-tabs {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.admin-operations-tabs button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 0 12px;
+  background: transparent;
+  color: rgb(245 242 250 / 0.34);
+  font: inherit;
+  font-size: 0.57rem;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.admin-operations-tabs button:hover {
+  color: rgb(245 242 250 / 0.62);
+}
+
+.admin-operations-tabs button.is-active {
+  border-color: rgb(192 132 252 / 0.2);
+  background: rgb(168 85 247 / 0.1);
+  color: rgb(233 213 255 / 0.84);
+}
+
+.admin-operations-toolbar > label {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding-right: 3px;
+}
+
+.admin-operations-toolbar > label span {
+  color: rgb(245 242 250 / 0.26);
+  font-size: 0.52rem;
+}
+
+.admin-operations-toolbar select {
+  min-height: 34px;
+  border: 1px solid rgb(192 132 252 / 0.14);
+  border-radius: 9px;
+  padding: 0 30px 0 10px;
+  outline: none;
+  background: rgb(7 6 10 / 0.82);
+  color: rgb(245 242 250 / 0.58);
+  font: inherit;
+  font-size: 0.55rem;
+}
+
+.admin-operations-alerts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-operations-alerts li {
+  border: 1px solid rgb(251 113 133 / 0.14);
+  border-radius: 11px;
+  padding: 11px 13px;
+  background: rgb(251 113 133 / 0.035);
+  color: rgb(254 205 211 / 0.66);
+  font-size: 0.59rem;
+}
+
 .admin-activity-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6922,6 +7009,109 @@ a {
   padding: 22px;
   color: rgb(245 242 250 / 0.3);
   font-size: 0.62rem;
+}
+
+.admin-transcript-detail {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  border: 1px solid rgb(192 132 252 / 0.16);
+  border-radius: 15px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 100% 0, rgb(168 85 247 / 0.1), transparent 16rem),
+    rgb(8 7 11 / 0.82);
+}
+
+.admin-transcript-detail > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-transcript-detail > header strong {
+  color: rgb(245 242 250 / 0.72);
+  font-size: 0.68rem;
+}
+
+.admin-transcript-detail > header button {
+  border: 0;
+  background: transparent;
+  color: rgb(216 180 254 / 0.54);
+  font: inherit;
+  font-size: 0.55rem;
+  cursor: pointer;
+}
+
+.admin-transcript-detail > div {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid rgb(192 132 252 / 0.07);
+  padding-top: 12px;
+}
+
+.admin-transcript-detail small {
+  color: rgb(216 180 254 / 0.42);
+  font-size: 0.51rem;
+}
+
+.admin-transcript-detail p {
+  margin: 0;
+  color: rgb(245 242 250 / 0.58);
+  font-size: 0.6rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.admin-retention-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-retention-settings > label {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgb(192 132 252 / 0.09);
+  border-radius: 12px;
+  padding: 10px 13px;
+  background: rgb(255 255 255 / 0.012);
+  color: rgb(245 242 250 / 0.48);
+  font-size: 0.59rem;
+}
+
+.admin-retention-settings input[type="number"] {
+  width: 82px;
+  min-height: 32px;
+  border: 1px solid rgb(192 132 252 / 0.14);
+  border-radius: 8px;
+  padding: 0 9px;
+  outline: none;
+  background: rgb(7 6 10 / 0.76);
+  color: rgb(245 242 250 / 0.62);
+  font: inherit;
+  font-size: 0.58rem;
+}
+
+.admin-retention-settings > div {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+
+.admin-readiness-check {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-readiness-check > span {
+  color: rgb(245 242 250 / 0.38);
+  font-size: 0.6rem;
 }
 
 @keyframes admin-pulse {
@@ -7132,6 +7322,26 @@ a {
 
   .admin-agent-tools article > em {
     display: none;
+  }
+
+  .admin-operations-toolbar,
+  .admin-readiness-check {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-operations-toolbar > label {
+    justify-content: space-between;
+    padding: 0 3px 3px;
+  }
+
+  .admin-retention-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-retention-settings > div {
+    grid-column: auto;
+    flex-direction: column;
   }
 
   .admin-editor-panel > header,

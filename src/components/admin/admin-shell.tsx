@@ -40,7 +40,7 @@ const MODULE_META: Record<
   knowledge: { eyebrow: "KNOWLEDGE RAG", label: "知识库" },
   agent: { eyebrow: "AGENT PROTOCOL", label: "Agent 管理" },
   models: { eyebrow: "MODEL CONNECTIONS", label: "模型连接" },
-  activity: { eyebrow: "VISIT & RUN LOGS", label: "访客与运行" },
+  activity: { eyebrow: "OPERATIONS & OBSERVABILITY", label: "运营与运行中心" },
   update: { eyebrow: "VERSION & RECOVERY", label: "系统更新" },
 };
 
@@ -52,7 +52,7 @@ const MODULE_ITEMS: Array<{
   { id: "knowledge", label: "知识库", icon: Database },
   { id: "agent", label: "Agent 管理", icon: Bot },
   { id: "models", label: "模型连接", icon: Cable },
-  { id: "activity", label: "访客与运行", icon: Activity },
+  { id: "activity", label: "运营与运行中心", icon: Activity },
   { id: "update", label: "系统更新", icon: RefreshCw },
 ];
 

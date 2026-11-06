@@ -151,6 +151,7 @@ describe("SqliteObservabilityStore", () => {
       requestId: "request-1",
       route: "/api/chat/stream",
     });
+    expect(dashboard.overview.uniqueVisitors).toBe(1);
     expect(dashboard.systemSamples).toHaveLength(1);
     expect(sampleCount).toBe(1);
 

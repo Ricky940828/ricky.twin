@@ -28,6 +28,7 @@ interface SqliteObservabilityStoreOptions {
   id?: (prefix: string) => string;
   systemProbe?: () => Promise<SystemProbeResult>;
   sampleIntervalMs?: number;
+  cleanupIntervalMs?: number | false;
 }
 
 type SqliteRow = Record<string, string | number | null>;
@@ -193,6 +194,7 @@ export function createSqliteObservabilityStore(
   const systemProbe =
     options.systemProbe ?? (async () => defaultSystemProbe(dataDir));
   let lastSystemSampleAt = Number.NEGATIVE_INFINITY;
+  let cleanupTimer: NodeJS.Timeout | undefined;
 
   mkdirSync(observabilityDir, { recursive: true });
   const database = new DatabaseSync(databasePath);
@@ -521,6 +523,13 @@ export function createSqliteObservabilityStore(
       const behaviorCount = database
         .prepare("SELECT COUNT(*) AS count FROM behavior_events WHERE created_at >= ?")
         .get(cutoff) as { count: number };
+      const visitorCount = database.prepare(`
+        SELECT COUNT(DISTINCT visitor_id) AS count FROM (
+          SELECT visitor_id FROM behavior_events WHERE created_at >= ?
+          UNION ALL
+          SELECT visitor_id FROM ai_runs WHERE created_at >= ?
+        )
+      `).get(cutoff, cutoff) as { count: number };
       const requestOverview = database.prepare(`
         SELECT COUNT(*) AS count,
           SUM(CASE WHEN status >= 400 THEN 1 ELSE 0 END) AS errors
@@ -548,6 +557,17 @@ export function createSqliteObservabilityStore(
       if (latestSystem && latestSystem.diskFreeBytes < 1_000_000_000) {
         alerts.push("服务器可用磁盘空间不足 1 GB");
       }
+      if (finiteInteger(aiOverview.failed) > 0) {
+        alerts.push(`当前统计范围内有 ${finiteInteger(aiOverview.failed)} 次 AI 调用失败`);
+      }
+      if (
+        finiteInteger(requestOverview.count) >= 10 &&
+        finiteInteger(requestOverview.errors) /
+          finiteInteger(requestOverview.count) >=
+          0.1
+      ) {
+        alerts.push("当前统计范围内请求异常率达到 10% 以上");
+      }
       return {
         settings: readSettings(),
         rangeDays: safeRangeDays,
@@ -556,7 +576,7 @@ export function createSqliteObservabilityStore(
           successfulAiRuns: finiteInteger(aiOverview.success),
           failedAiRuns: finiteInteger(aiOverview.failed),
           totalTokens: finiteInteger(aiOverview.tokens),
-          uniqueVisitors: finiteInteger(aiOverview.visitors),
+          uniqueVisitors: finiteInteger(visitorCount.count),
           behaviorEvents: finiteInteger(behaviorCount.count),
           requests: finiteInteger(requestOverview.count),
           requestErrors: finiteInteger(requestOverview.errors),
@@ -607,9 +627,25 @@ export function createSqliteObservabilityStore(
     },
 
     close() {
+      if (cleanupTimer) clearInterval(cleanupTimer);
       database.close();
     },
   };
+
+  if (options.cleanupIntervalMs !== false) {
+    cleanupTimer = setInterval(
+      () => {
+        void store.cleanupExpired().catch((error) => {
+          console.warn(
+            "[observability] scheduled cleanup failed:",
+            error instanceof Error ? error.message : "unknown error",
+          );
+        });
+      },
+      Math.max(60_000, options.cleanupIntervalMs ?? 3_600_000),
+    );
+    cleanupTimer.unref();
+  }
 
   return store;
 }
