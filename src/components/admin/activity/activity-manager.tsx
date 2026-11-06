@@ -84,7 +84,6 @@ export function ActivityManager() {
   const [readiness, setReadiness] = useState("");
 
   const load = useCallback(async (silent = false) => {
-    if (!silent) setError("");
     try {
       const response = await fetch(`/api/admin/activity?range=${rangeDays}`, {
         cache: "no-store",
@@ -94,6 +93,7 @@ export function ActivityManager() {
         setError(result.message);
         return;
       }
+      if (!silent) setError("");
       setWorkspace(result.workspace);
       setDashboard(result.dashboard);
       setSettings(result.dashboard.settings);
@@ -103,7 +103,8 @@ export function ActivityManager() {
   }, [rangeDays]);
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   useEffect(() => {
@@ -114,7 +115,16 @@ export function ActivityManager() {
 
   const conversion = useMemo(() => {
     if (!workspace || !dashboard) return 0;
-    const cutoff = Date.now() - rangeDays * 86_400_000;
+    const newestObservedAt = [
+      workspace.updatedAt,
+      dashboard.recentBehaviorEvents[0]?.createdAt,
+      dashboard.recentAiRuns[0]?.createdAt,
+      dashboard.recentRequests[0]?.createdAt,
+    ].reduce(
+      (latest, value) => Math.max(latest, value ? Date.parse(value) : 0),
+      0,
+    );
+    const cutoff = newestObservedAt - rangeDays * 86_400_000;
     const leadsInRange = workspace.leads.filter(
       (lead) => new Date(lead.createdAt).valueOf() >= cutoff,
     ).length;
