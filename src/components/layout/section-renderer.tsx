@@ -352,7 +352,10 @@ export function SectionRenderer({
       data-testid="site-renderer"
       onClickCapture={keepPreviewInSandbox}
     >
-      <VisitTracker enabled={mode === "published"} />
+      <VisitTracker
+        activeSection={activeSection}
+        enabled={mode === "published"}
+      />
       <DotField />
       <PersistentCharacter
         identityCard={site.identityCard}

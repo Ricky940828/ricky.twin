@@ -18,6 +18,11 @@ import {
   getRuntimeStore,
 } from "@/server/runtime/file-runtime-store";
 import type { RuntimeStore } from "@/server/runtime/runtime-store";
+import type { FinishRuntimeInput } from "@/server/runtime/runtime-types";
+import {
+  getObservabilityStore,
+} from "@/server/observability/sqlite-observability-store";
+import type { ObservabilityStore } from "@/server/observability/observability-store";
 
 import {
   runChat,
@@ -39,6 +44,7 @@ export interface ChatServiceDependencies {
   runtimeStore: RuntimeStore;
   knowledgeService: KnowledgeService;
   contentService: ContentService;
+  observabilityStore: ObservabilityStore;
   run?: ChatRunner;
 }
 
@@ -201,6 +207,7 @@ export function createChatService(
   const runTracked = async (
     input: ChatInput,
     invokeModel: ModelInvoker,
+    partialAnswer?: () => string,
   ) => {
     const agent = await dependencies.agentStore.getPublishedAgent();
     const started = await dependencies.runtimeStore.begin({
@@ -214,43 +221,107 @@ export function createChatService(
       return usageBlocked(started.reason);
     }
 
-    const result = await execute(
-      {
-        getAgent: async () => agent,
-        getModel: () => dependencies.agentStore.getActiveModel(),
-        getKnowledge: () =>
-          dependencies.knowledgeService.getRetrievalWorkspace(),
-        getContent: () => dependencies.contentService.getPublished(),
-        invokeModel,
-      },
-      input,
-    );
-    const status =
-      result.mode === "demo"
-        ? "demo"
-        : result.ok
-          ? "success"
-          : result.code === "model-unavailable"
-            ? "error"
-            : "blocked";
-    await dependencies.runtimeStore.finish(started.runId, {
-      status,
-      mode: result.mode,
-      modelName: result.meta.modelName,
-      retrievalCount: result.meta.retrievalCount,
-      latencyMs: result.meta.latencyMs,
-      totalTokens: result.meta.usage?.totalTokens ?? 0,
-      usage: result.meta.usage,
-      nextAction: result.nextAction,
-    });
-    return result;
+    let result: ChatResult | undefined;
+    let failure: unknown;
+    try {
+      result = await execute(
+        {
+          getAgent: async () => agent,
+          getModel: () => dependencies.agentStore.getActiveModel(),
+          getKnowledge: () =>
+            dependencies.knowledgeService.getRetrievalWorkspace(),
+          getContent: () => dependencies.contentService.getPublished(),
+          invokeModel,
+        },
+        input,
+      );
+      return result;
+    } catch (error) {
+      failure = error;
+      throw error;
+    } finally {
+      const status: FinishRuntimeInput["status"] = failure
+        ? "error"
+        : result?.mode === "demo"
+          ? "demo"
+          : result?.ok
+            ? "success"
+            : result?.code === "model-unavailable"
+              ? "error"
+              : "blocked";
+      const runtimeResult: FinishRuntimeInput = result
+        ? {
+            status,
+            mode: result.mode,
+            modelName: result.meta.modelName,
+            retrievalCount: result.meta.retrievalCount,
+            latencyMs: result.meta.latencyMs,
+            totalTokens: result.meta.usage?.totalTokens ?? 0,
+            usage: result.meta.usage,
+            nextAction: result.nextAction,
+          }
+        : {
+            status: "error" as const,
+            mode: "blocked" as const,
+            retrievalCount: 0,
+            latencyMs: 0,
+            totalTokens: 0,
+            nextAction: "none" as const,
+          };
+      try {
+        await dependencies.runtimeStore.finish(started.runId, runtimeResult);
+      } catch (error) {
+        console.warn(
+          "[runtime] failed to finish tracked run:",
+          error instanceof Error ? error.message : "unknown error",
+        );
+      }
+      try {
+        const visiblePartial = partialAnswer?.().trim();
+        await dependencies.observabilityStore.recordAiRun({
+          id: started.runId,
+          requestId: input.requestId,
+          visitorId: input.actor.visitorId,
+          sessionId: input.actor.sessionId,
+          tier: input.actor.tier,
+          question: input.question,
+          answer: visiblePartial || result?.answer,
+          status,
+          mode: result?.mode,
+          configuredModel: result?.meta.configuredModel,
+          actualModel: result?.meta.actualModel,
+          providerRequestId: result?.meta.providerRequestId,
+          retrievalCount: result?.meta.retrievalCount ?? 0,
+          contextBudgetTokens: result?.meta.contextBudgetTokens,
+          promptTokens: result?.meta.usage?.promptTokens ?? 0,
+          completionTokens: result?.meta.usage?.completionTokens ?? 0,
+          totalTokens: result?.meta.usage?.totalTokens ?? 0,
+          firstTokenMs: result?.meta.firstTokenMs,
+          latencyMs: result?.meta.latencyMs ?? 0,
+          attempts: result?.meta.attempts ?? 1,
+          errorType:
+            result?.meta.errorType ??
+            (failure instanceof Error ? failure.name : failure ? "UnknownError" : undefined),
+          nextAction: result?.nextAction,
+        });
+      } catch (error) {
+        console.warn(
+          "[observability] AI run log failed:",
+          error instanceof Error ? error.message : "unknown error",
+        );
+      }
+    }
   };
 
   return {
     chat: (input) => runTracked(input, callOpenAICompatibleModel),
 
     async stream(input, onDelta) {
-      const safeStream = createSafeDeltaBuffer(onDelta);
+      let visibleAnswer = "";
+      const safeStream = createSafeDeltaBuffer((delta) => {
+        visibleAnswer += delta;
+        onDelta(delta);
+      });
       const result = await runTracked(
         input,
         (connection, request) =>
@@ -259,6 +330,7 @@ export function createChatService(
             request,
             safeStream.push,
           ),
+        () => visibleAnswer,
       );
       safeStream.finish();
       return result;
@@ -299,6 +371,7 @@ export function getChatService() {
     runtimeStore: getRuntimeStore(),
     knowledgeService: getKnowledgeService(),
     contentService: getContentService(),
+    observabilityStore: getObservabilityStore(),
   });
   return singleton;
 }

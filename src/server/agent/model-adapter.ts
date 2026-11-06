@@ -89,6 +89,7 @@ export async function callOpenAICompatibleModel(
   connection: ResolvedModelConnection,
   request: UnifiedModelRequest,
 ): Promise<UnifiedModelResponse> {
+  const startedAt = performance.now();
   const response = await fetch(
     `${connection.baseUrl.replace(/\/$/, "")}/chat/completions`,
     {
@@ -117,6 +118,8 @@ export async function callOpenAICompatibleModel(
     providerRequestId:
       optionalText(payload.id) ??
       optionalText(response.headers.get("x-request-id")),
+    firstTokenMs: Math.max(0, Math.round(performance.now() - startedAt)),
+    attempts: 1,
   };
 }
 
@@ -125,6 +128,7 @@ async function streamOpenAICompatibleModelOnce(
   request: UnifiedModelRequest,
   onDelta: (delta: string) => void,
 ): Promise<UnifiedModelResponse> {
+  const startedAt = performance.now();
   const response = await fetch(
     `${connection.baseUrl.replace(/\/$/, "")}/chat/completions`,
     {
@@ -157,6 +161,8 @@ async function streamOpenAICompatibleModelOnce(
       providerRequestId:
         optionalText(payload.id) ??
         optionalText(response.headers.get("x-request-id")),
+      firstTokenMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      attempts: 1,
     };
   }
   if (!response.body) {
@@ -171,6 +177,7 @@ async function streamOpenAICompatibleModelOnce(
   let providerModelId: string | undefined;
   let providerRequestId =
     optionalText(response.headers.get("x-request-id"));
+  let firstTokenMs: number | undefined;
 
   const consumeEvent = (event: string) => {
     const data = event
@@ -189,6 +196,10 @@ async function streamOpenAICompatibleModelOnce(
     }
     const delta = payload.choices?.[0]?.delta?.content;
     if (typeof delta === "string" && delta) {
+      firstTokenMs ??= Math.max(
+        0,
+        Math.round(performance.now() - startedAt),
+      );
       answer += delta;
       onDelta(delta);
     }
@@ -227,6 +238,8 @@ async function streamOpenAICompatibleModelOnce(
         : usageWithFallback(undefined, request, answer),
     providerModelId,
     providerRequestId,
+    firstTokenMs,
+    attempts: 1,
   };
 }
 
@@ -241,21 +254,23 @@ export async function streamOpenAICompatibleModel(
     onDelta(delta);
   };
   try {
-    return await streamOpenAICompatibleModelOnce(
+    const result = await streamOpenAICompatibleModelOnce(
       connection,
       request,
       forward,
     );
+    return { ...result, attempts: 1 };
   } catch (error) {
     const timedOut =
       error instanceof DOMException && error.name === "TimeoutError";
     if (emitted || timedOut) {
       throw error;
     }
-    return streamOpenAICompatibleModelOnce(
+    const result = await streamOpenAICompatibleModelOnce(
       connection,
       request,
       forward,
     );
+    return { ...result, attempts: 2 };
   }
 }

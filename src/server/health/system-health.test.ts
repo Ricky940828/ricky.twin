@@ -1,8 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createSystemHealthCheck } from "./system-health";
+import {
+  createSystemHealthCheck,
+  createSystemLivenessCheck,
+} from "./system-health";
 
 describe("system health check", () => {
+  it("provides a lightweight liveness result without reading persisted workspaces", async () => {
+    const sampleSystem = vi.fn(async () => undefined);
+    const check = createSystemLivenessCheck({
+      version: "0.2.2",
+      commit: "abc123",
+      uptime: () => 360,
+      sampleSystem,
+    });
+
+    await expect(check()).resolves.toEqual({
+      ok: true,
+      version: "0.2.2",
+      commit: "abc123",
+      uptimeSeconds: 360,
+    });
+    expect(sampleSystem).toHaveBeenCalledTimes(1);
+  });
+
   it("reports healthy only after every persisted workspace is readable", async () => {
     const check = createSystemHealthCheck({
       version: "0.2.0",

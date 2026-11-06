@@ -1,5 +1,6 @@
 import type { UnifiedChatMessage } from "@/server/agent/agent-types";
 import { getChatService } from "@/server/chat/chat-service";
+import { observeRequest } from "@/server/observability/request-monitor";
 import {
   attachVisitorCookie,
   visitorIdForRequest,
@@ -31,6 +32,13 @@ function event(name: string, value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const visitorId = visitorIdForRequest(request);
+  return observeRequest({
+    request,
+    route: "/api/chat/stream",
+    actor: "anonymous",
+    visitorId,
+    handler: async (requestId) => {
   let body: unknown;
   try {
     body = await request.json();
@@ -48,7 +56,6 @@ export async function POST(request: Request) {
     typeof body === "object" && body !== null
       ? (body as Record<string, unknown>)
       : {};
-  const visitorId = visitorIdForRequest(request);
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -67,6 +74,7 @@ export async function POST(request: Request) {
                 visitorId,
                 sessionId: visitorId,
               },
+              requestId,
             },
             (text) => {
               controller.enqueue(
@@ -101,4 +109,6 @@ export async function POST(request: Request) {
     },
   });
   return attachVisitorCookie(response, request, visitorId);
+    },
+  });
 }

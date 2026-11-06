@@ -30,4 +30,28 @@ describe("VisitTracker", () => {
 
     expect(request).not.toHaveBeenCalled();
   });
+
+  it("records each newly viewed public section without blocking rendering", async () => {
+    const request = vi.fn(async () => Response.json({ ok: true }));
+    vi.stubGlobal("fetch", request);
+
+    const { rerender } = render(
+      <VisitTracker activeSection="hero" enabled />,
+    );
+    rerender(<VisitTracker activeSection="career" enabled />);
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith(
+        "/api/events",
+        expect.objectContaining({
+          body: JSON.stringify({
+            eventType: "section_view",
+            path: "/",
+            section: "career",
+          }),
+          method: "POST",
+        }),
+      ),
+    );
+  });
 });

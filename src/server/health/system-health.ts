@@ -4,6 +4,7 @@ import { getContentService } from "@/server/content/content-service";
 import { CURRENT_DATA_SCHEMA_VERSION, initializeApplicationDataRoot } from "@/server/data/data-schema";
 import { getKnowledgeService } from "@/server/knowledge/knowledge-service";
 import { getRuntimeStore } from "@/server/runtime/file-runtime-store";
+import { getObservabilityStore } from "@/server/observability/sqlite-observability-store";
 
 type StoreName = "content" | "knowledge" | "agent" | "runtime";
 
@@ -12,6 +13,35 @@ interface HealthOptions {
   commit: string;
   dataSchemaVersion: number;
   probes: Record<StoreName, () => Promise<unknown>>;
+}
+
+interface LivenessOptions {
+  version: string;
+  commit: string;
+  uptime?: () => number;
+  sampleSystem?: () => Promise<void>;
+}
+
+export function createSystemLivenessCheck(options: LivenessOptions) {
+  return async () => {
+    try {
+      await options.sampleSystem?.();
+    } catch (error) {
+      console.warn(
+        "[health] system sample failed:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
+    return {
+      ok: true as const,
+      version: options.version,
+      commit: options.commit,
+      uptimeSeconds: Math.max(
+        0,
+        Math.round((options.uptime ?? process.uptime)()),
+      ),
+    };
+  };
 }
 
 export function createSystemHealthCheck(options: HealthOptions) {
@@ -49,5 +79,14 @@ export function getSystemHealthCheck() {
       agent: () => getAgentStore().getAdminWorkspace(),
       runtime: () => getRuntimeStore().getWorkspace(),
     },
+  });
+}
+
+export function getSystemLivenessCheck() {
+  const runtime = resolveApplicationRuntime();
+  return createSystemLivenessCheck({
+    version: runtime.version,
+    commit: runtime.commit,
+    sampleSystem: () => getObservabilityStore().sampleSystem(),
   });
 }

@@ -1,5 +1,6 @@
 import type { UnifiedChatMessage } from "@/server/agent/agent-types";
 import { getChatService } from "@/server/chat/chat-service";
+import { observeRequest } from "@/server/observability/request-monitor";
 import {
   attachVisitorCookie,
   visitorIdForRequest,
@@ -27,6 +28,13 @@ function safeHistory(value: unknown): UnifiedChatMessage[] {
 }
 
 export async function POST(request: Request) {
+  const visitorId = visitorIdForRequest(request);
+  return observeRequest({
+    request,
+    route: "/api/chat",
+    actor: "anonymous",
+    visitorId,
+    handler: async (requestId) => {
   let body: unknown;
   try {
     body = await request.json();
@@ -44,7 +52,6 @@ export async function POST(request: Request) {
     typeof body === "object" && body !== null
       ? (body as Record<string, unknown>)
       : {};
-  const visitorId = visitorIdForRequest(request);
   const result = await getChatService().chat({
     question: typeof record.question === "string" ? record.question : "",
     history: safeHistory(record.history),
@@ -54,6 +61,7 @@ export async function POST(request: Request) {
       visitorId,
       sessionId: visitorId,
     },
+    requestId,
   });
   const status =
     result.code === "usage-limit"
@@ -68,4 +76,6 @@ export async function POST(request: Request) {
     headers: { "Cache-Control": "no-store" },
   });
   return attachVisitorCookie(response, request, visitorId);
+    },
+  });
 }

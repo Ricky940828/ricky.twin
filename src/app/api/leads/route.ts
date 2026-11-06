@@ -1,11 +1,20 @@
 import { getRuntimeStore } from "@/server/runtime/file-runtime-store";
 import { RuntimeStoreError } from "@/server/runtime/runtime-store";
+import { observeRequest } from "@/server/observability/request-monitor";
+import { getObservabilityStore } from "@/server/observability/sqlite-observability-store";
 import {
   attachVisitorCookie,
   visitorIdForRequest,
 } from "@/server/runtime/visitor-session";
 
 export async function POST(request: Request) {
+  const visitorId = visitorIdForRequest(request);
+  return observeRequest({
+    request,
+    route: "/api/leads",
+    actor: "anonymous",
+    visitorId,
+    handler: async () => {
   let body: Record<string, unknown>;
   try {
     const value = await request.json();
@@ -19,7 +28,6 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const visitorId = visitorIdForRequest(request);
   try {
     await getRuntimeStore().createLead({
       visitorId,
@@ -30,6 +38,16 @@ export async function POST(request: Request) {
       direction:
         typeof body.direction === "string" ? body.direction : "",
       consent: body.consent === true,
+    });
+    await getObservabilityStore().recordBehavior({
+      eventType: "lead_created",
+      visitorId,
+      sessionId: visitorId,
+      path: "/",
+      target:
+        typeof body.direction === "string"
+          ? body.direction.slice(0, 160)
+          : undefined,
     });
     const response = Response.json(
       {
@@ -54,4 +72,6 @@ export async function POST(request: Request) {
       { status: 422 },
     );
   }
+    },
+  });
 }
