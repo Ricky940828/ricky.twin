@@ -4,6 +4,7 @@ import type { ContentService } from "@/server/content/content-service";
 import type { KnowledgeService } from "@/server/knowledge/knowledge-service";
 import type { AgentStore } from "@/server/agent/agent-store";
 import type { RuntimeStore } from "@/server/runtime/runtime-store";
+import type { ObservabilityStore } from "@/server/observability/observability-store";
 
 import {
   createChatService,
@@ -76,6 +77,18 @@ function dependencies() {
   const contentService = {
     getPublished: vi.fn(async () => ({})),
   } as unknown as ContentService;
+  const observabilityStore = {
+    getSettings: vi.fn(),
+    updateSettings: vi.fn(),
+    recordAiRun: vi.fn(),
+    getAiRunDetail: vi.fn(),
+    recordBehavior: vi.fn(),
+    recordRequest: vi.fn(),
+    sampleSystem: vi.fn(),
+    getDashboard: vi.fn(),
+    cleanupExpired: vi.fn(),
+    close: vi.fn(),
+  } satisfies ObservabilityStore;
   const run = vi.fn(async () => ({
     ok: true,
     mode: "demo" as const,
@@ -88,6 +101,7 @@ function dependencies() {
     runtimeStore,
     knowledgeService,
     contentService,
+    observabilityStore,
     run,
   };
 }
@@ -159,6 +173,46 @@ describe("chat service", () => {
         mode: "demo",
         retrievalCount: 0,
         totalTokens: 0,
+      }),
+    );
+    expect(deps.observabilityStore.recordAiRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "run-1",
+        visitorId: "visitor-1",
+        question: "你擅长什么",
+        answer: "尚未连接模型",
+        status: "demo",
+      }),
+    );
+  });
+
+  it("模型运行异常时也会收口并留下一条失败监测记录", async () => {
+    const deps = dependencies();
+    deps.run.mockRejectedValueOnce(new Error("upstream failed"));
+    const service = createChatService(deps);
+
+    await expect(
+      service.chat({
+        question: "测试失败链路",
+        history: [],
+        actor: {
+          tier: "anonymous",
+          allowedBaseIds: [],
+          visitorId: "visitor-1",
+        },
+      }),
+    ).rejects.toThrow("upstream failed");
+
+    expect(deps.runtimeStore.finish).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({ status: "error" }),
+    );
+    expect(deps.observabilityStore.recordAiRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "run-1",
+        question: "测试失败链路",
+        status: "error",
+        errorType: "Error",
       }),
     );
   });

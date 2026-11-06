@@ -156,4 +156,6 @@ export interface UnifiedModelResponse {
   usage: ModelUsage;
   providerModelId?: string;
   providerRequestId?: string;
+  firstTokenMs?: number;
+  attempts?: number;
 }

@@ -21,6 +21,7 @@ export interface ChatInput {
   history: UnifiedChatMessage[];
   actor: ChatActor;
   adminDebug?: boolean;
+  requestId?: string;
 }
 
 export type ChatNextAction =
@@ -33,6 +34,12 @@ export interface ChatMeta {
   latencyMs: number;
   contextBudgetTokens?: number;
   modelName?: string;
+  configuredModel?: string;
+  actualModel?: string;
+  providerRequestId?: string;
+  firstTokenMs?: number;
+  attempts?: number;
+  errorType?: string;
   usage?: ModelUsage;
   knowledgeBaseNames?: string[];
 }

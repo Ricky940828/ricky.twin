@@ -260,6 +260,11 @@ export async function runChat(
         modelName: response.providerModelId
           ? `${model.name}（实际 ${response.providerModelId}）`
           : model.name,
+        configuredModel: model.name,
+        actualModel: response.providerModelId ?? model.modelId,
+        providerRequestId: response.providerRequestId,
+        firstTokenMs: response.firstTokenMs,
+        attempts: response.attempts,
         usage: response.usage,
         knowledgeBaseNames: debugNames,
       },
@@ -269,10 +274,13 @@ export async function runChat(
       "[chat] model invocation failed:",
       error instanceof Error ? error.message : "unknown model error",
     );
-    return blocked(
+    const result = blocked(
       "model-unavailable",
       "数字分身暂时无法完成回答，请稍后再试，或先浏览公开职业与项目内容。",
       Math.max(0, now() - startedAt),
     );
+    result.meta.errorType =
+      error instanceof Error ? error.name : "UnknownError";
+    return result;
   }
 }

@@ -60,6 +60,7 @@ describe("callOpenAICompatibleModel", () => {
     expect(result.usage.totalTokens).toBe(152);
     expect(result.providerModelId).toBe("provider-model-actual");
     expect(result.providerRequestId).toBe("request-model-1");
+    expect(result.attempts).toBe(1);
     expect(String(requests[0].input)).toBe(
       "https://api.aicenter.net.cn/v1/chat/completions",
     );
@@ -155,6 +156,9 @@ describe("callOpenAICompatibleModel", () => {
     expect(result.usage.totalTokens).toBeGreaterThan(0);
     expect(result.providerModelId).toBe("provider-stream-model");
     expect(result.providerRequestId).toBe("stream-request-1");
+    expect(result.firstTokenMs).toEqual(expect.any(Number));
+    expect(result.firstTokenMs).toBeGreaterThanOrEqual(0);
+    expect(result.attempts).toBe(1);
     expect(JSON.parse(String(requests[0].body))).toMatchObject({
       stream: true,
     });
@@ -211,5 +215,7 @@ describe("callOpenAICompatibleModel", () => {
     expect(attempts).toBe(2);
     expect(deltas).toEqual(["重试后恢复。"]);
     expect(result.text).toBe("重试后恢复。");
+    expect(result.attempts).toBe(2);
+    expect(result.firstTokenMs).toEqual(expect.any(Number));
   });
 });
